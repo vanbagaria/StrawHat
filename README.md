@@ -38,7 +38,7 @@ gcc *.c -o SGE_Demo -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf -lSDL2_mixer
 ```
 
 A blue window should appear, along with a console window with a lot of debug information.
-For more exciting examples, checkout the [demos](demos) and read the [manual](manual.pdf).
+For more examples, checkout the [demos](demos) and read the [manual](SGE_Manual.pdf).
 
 ## Dependencies
 * [SDL2](https://www.libsdl.org/)

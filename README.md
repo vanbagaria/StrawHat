@@ -1,5 +1,9 @@
 # Strawhat Game Engine
 
+## Introduction
+[Click here](https://www.youtube.com/watch?v=f3fTrK9X9AU)
+to watch the SGE Introduction Video.
+
 ## Overview
 A C framework for making games based on the cross-platform SDL2 library.
 SGE provides a simple state system, logging functions and even a basic GUI framework.

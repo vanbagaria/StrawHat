@@ -4,10 +4,10 @@
 #include "SGE_Texture.h"
 #include "SGE_GUI.h"
 
-#include <SDL.h>
-#include <SDL_image.h>
-#include <SDL_ttf.h>
-#include <SDL_mixer.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_mixer.h>
 
 #include <stdlib.h>
 #include <time.h>
@@ -25,8 +25,14 @@ const SDL_Color SGE_COLOR_LIGHT_GRAY   = {195, 195, 195, 255};
 const SDL_Color SGE_COLOR_LIGHT_PURPLE = {200, 191, 231, 255};
 const SDL_Color SGE_COLOR_DARK_RED     = {136,   0,  21, 255};
 const SDL_Color SGE_COLOR_CERISE       = {222,  49,  99, 255};
+const SDL_Color SGE_COLOR_ORANGE       = {255, 127,   0, 255};
+const SDL_Color SGE_COLOR_INDIGO       = { 63,  72, 204, 255};
+const SDL_Color SGE_COLOR_PURPLE       = {163,  73, 164, 255};
 
+/* Global engine data */
 static SGE_EngineData engine;
+
+/* Current state */
 static SGE_GameState currentState;
 
 SGE_EngineData *SGE_GetEngineData()
@@ -55,41 +61,14 @@ SGE_EngineData *SGE_Init(const char *title, int screenWidth, int screenHeight)
 	engine.mouse_y = 0;
 	engine.defaultFont = NULL;
 	
-	engine.currentTime = 0;
+	engine.frameStartTime = 0;
 	engine.fps = 60;
 	engine.lastRenderTime = 0;
 	engine.perFrameTime = 1000 / engine.fps;
 	engine.frameRateCap = false;
-	
-	SGE_SetStateFunctions(&currentState, "SGE", NULL, NULL, NULL, NULL, NULL);
-	
-	SDL_VERSION(&engine.SDL_Version_C);
-	SDL_GetVersion(&engine.SDL_Version_DLL);
-	
-	SDL_IMAGE_VERSION(&engine.SDL_IMG_Version_C);
-	engine.SDL_IMG_Version_DLL = IMG_Linked_Version();
-	
-	SDL_TTF_VERSION(&engine.SDL_TTF_Version_C);
-	engine.SDL_TTF_Version_DLL = TTF_Linked_Version();
-	
-	SDL_MIXER_VERSION(&engine.SDL_MIX_Version_C);
-	engine.SDL_MIX_Version_DLL = Mix_Linked_Version();
-	
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Version: %d.%d.%d (Compiled)", engine.SDL_Version_C.major, engine.SDL_Version_C.minor, engine.SDL_Version_C.patch);
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Version: %d.%d.%d (Linked)", engine.SDL_Version_DLL.major, engine.SDL_Version_DLL.minor, engine.SDL_Version_DLL.patch);
-	
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Image Version: %d.%d.%d (Compiled)", engine.SDL_IMG_Version_C.major, engine.SDL_IMG_Version_C.minor, engine.SDL_IMG_Version_C.patch);
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Image Version: %d.%d.%d (Linked)", engine.SDL_IMG_Version_DLL->major, engine.SDL_IMG_Version_DLL->minor, engine.SDL_IMG_Version_DLL->patch);
-	
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL TTF Version: %d.%d.%d (Compiled)", engine.SDL_TTF_Version_C.major, engine.SDL_TTF_Version_C.minor, engine.SDL_TTF_Version_C.patch);
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL TTF Version: %d.%d.%d (Linked)", engine.SDL_TTF_Version_DLL->major, engine.SDL_TTF_Version_DLL->minor, engine.SDL_TTF_Version_DLL->patch);
-	
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Mixer Version: %d.%d.%d (Compiled)", engine.SDL_MIX_Version_C.major, engine.SDL_MIX_Version_C.minor, engine.SDL_MIX_Version_C.patch);
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Mixer Version: %d.%d.%d (Linked)", engine.SDL_MIX_Version_DLL->major, engine.SDL_MIX_Version_DLL->minor, engine.SDL_MIX_Version_DLL->patch);
-	
-	unsigned int randSeed = time(NULL);
-	srand(randSeed);
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "C Random Seed: %d Seconds from epoch.", randSeed);
+
+	engine.delta = 0;
+	engine.lastFrameTime = 0;
 	
 	SDL_Init(SDL_INIT_EVERYTHING);
 	IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_WEBP);
@@ -118,49 +97,94 @@ SGE_EngineData *SGE_Init(const char *title, int screenWidth, int screenHeight)
 		engine.isRunning = false;
 		return NULL;
 	}
+
+	Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024);
 	
 	engine.defaultScreenClearColor.r = 0;
 	engine.defaultScreenClearColor.g = 200;
 	engine.defaultScreenClearColor.b = 255;
 	engine.defaultScreenClearColor.a = 255;
+
+	SDL_VERSION(&engine.SDL_Version_C);
+	SDL_GetVersion(&engine.SDL_Version_DLL);
+	
+	SDL_IMAGE_VERSION(&engine.SDL_IMG_Version_C);
+	engine.SDL_IMG_Version_DLL = IMG_Linked_Version();
+	
+	SDL_TTF_VERSION(&engine.SDL_TTF_Version_C);
+	engine.SDL_TTF_Version_DLL = TTF_Linked_Version();
+	
+	SDL_MIXER_VERSION(&engine.SDL_MIX_Version_C);
+	engine.SDL_MIX_Version_DLL = Mix_Linked_Version();
+	
+	SGE_SetStateFunctions(&currentState, "SGE", NULL, NULL, NULL, NULL, NULL);
+	SGE_LogPrintLine(SGE_LOG_INFO, "Straw Hat Game Engine Version 1.0");
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "Platform: %s", SDL_GetPlatform());
+	//SGE_LogPrintLine(SGE_LOG_DEBUG, "Video Driver: %s", SDL_GetCurrentVideoDriver());
+	//SGE_LogPrintLine(SGE_LOG_DEBUG, "Audio Driver: %s", SDL_GetCurrentAudioDriver());
+
+	SDL_RendererInfo rendererInfo;
+	SDL_GetRendererInfo(engine.renderer, &rendererInfo);
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "Renderer: %s", rendererInfo.name);
+
+	engine.randSeed = time(NULL);
+	srand(engine.randSeed);
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "C Random Seed: %d Seconds from epoch.", engine.randSeed);
+
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Version: %d.%d.%d (Compiled)", engine.SDL_Version_C.major, engine.SDL_Version_C.minor, engine.SDL_Version_C.patch);
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Version: %d.%d.%d (Linked)", engine.SDL_Version_DLL.major, engine.SDL_Version_DLL.minor, engine.SDL_Version_DLL.patch);
+	
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Image Version: %d.%d.%d (Compiled)", engine.SDL_IMG_Version_C.major, engine.SDL_IMG_Version_C.minor, engine.SDL_IMG_Version_C.patch);
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Image Version: %d.%d.%d (Linked)", engine.SDL_IMG_Version_DLL->major, engine.SDL_IMG_Version_DLL->minor, engine.SDL_IMG_Version_DLL->patch);
+	
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL TTF Version: %d.%d.%d (Compiled)", engine.SDL_TTF_Version_C.major, engine.SDL_TTF_Version_C.minor, engine.SDL_TTF_Version_C.patch);
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL TTF Version: %d.%d.%d (Linked)", engine.SDL_TTF_Version_DLL->major, engine.SDL_TTF_Version_DLL->minor, engine.SDL_TTF_Version_DLL->patch);
+	
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Mixer Version: %d.%d.%d (Compiled)", engine.SDL_MIX_Version_C.major, engine.SDL_MIX_Version_C.minor, engine.SDL_MIX_Version_C.patch);
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Mixer Version: %d.%d.%d (Linked)", engine.SDL_MIX_Version_DLL->major, engine.SDL_MIX_Version_DLL->minor, engine.SDL_MIX_Version_DLL->patch);
+
+	SGE_printf(SGE_LOG_DEBUG, "\n");
 	
 	if(!SGE_GUI_Init())
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to initialize SGE GUI!");
 		engine.isRunning = SDL_FALSE;
+		Mix_CloseAudio();
+		Mix_Quit();
+		TTF_CloseFont(engine.defaultFont);
+		TTF_Quit();
+		IMG_Quit();
+		SDL_Quit();
 		return NULL;
 	}
 	
 	return &engine;
 }
 
-void SGE_Run(SGE_GameState *startState)
+void SGE_Run(const char *startStateName)
 {
+	SGE_GameState *startState = SGE_GetState(startStateName);
 	if(startState != NULL)
 	{
 		SGE_SetStateFunctions(&currentState, startState->name, startState->init, startState->quit, startState->handleEvents, startState->update, startState->render);
 	}
 	else
 	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "No state set!");
-		SGE_SetStateFunctions(&currentState, "No State", NULL, NULL, NULL, NULL, NULL);
+		SGE_LogPrintLine(SGE_LOG_WARNING, "No state set, creating fallback!");
+		SGE_AddState("No State", NULL, NULL, NULL, NULL, NULL);
+		startState = SGE_GetState("No State");
+		SGE_SetStateFunctions(&currentState, startState->name, startState->init, startState->quit, startState->handleEvents, startState->update, startState->render);
 	}
 	
-	SGE_printf("\n");
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Initializing state: \"%s\"...", currentState.name);
-	if(!currentState.init())
-	{
-		engine.isRunning = false;
-		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed Initializing State!");
-	}
-	else
-	{
-		SGE_LogPrintLine(SGE_LOG_DEBUG, "Finished Initializing State.\n");
-	}
+	SGE_GUI_UpdateCurrentState(currentState.name);
+	SGE_InitState(&currentState);
 	
 	while(engine.isRunning)
 	{
-		engine.currentTime = SDL_GetTicks();
+		/* Calculate Delta time */
+		engine.frameStartTime = SDL_GetTicks();
+		engine.delta = (engine.frameStartTime - engine.lastFrameTime) / 1000.0;
+		engine.lastFrameTime = engine.frameStartTime;
 		
 		/* Event Handling */
 		SDL_GetMouseState(&engine.mouse_x, &engine.mouse_y);
@@ -184,11 +208,13 @@ void SGE_Run(SGE_GameState *startState)
 		currentState.render();
 		SGE_GUI_Render();
 		SDL_RenderPresent(engine.renderer);
+
+		SGE_SwitchStates();
 		
 		if(engine.frameRateCap)
 		{			
 			/* Cap the framerate by delaying the next frame */
-			engine.lastRenderTime = SDL_GetTicks() - engine.currentTime;
+			engine.lastRenderTime = SDL_GetTicks() - engine.frameStartTime;
 			if(engine.lastRenderTime < engine.perFrameTime)
 			{
 				SDL_Delay(engine.perFrameTime - engine.lastRenderTime);
@@ -196,15 +222,15 @@ void SGE_Run(SGE_GameState *startState)
 		}
 	}
 	
-	SGE_printf("\n");
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Quitting state: \"%s\"...", currentState.name);
-	currentState.quit();
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Finished Quitting State.");
-	
+	SGE_QuitState(&currentState);
 	SGE_SetStateFunctions(&currentState, "SGE", NULL, NULL, NULL, NULL, NULL);
 	
+	SGE_FreeLoadedStates();
+	SGE_FreeStateList();
 	SGE_GUI_Quit();
 	
+	Mix_CloseAudio();
+	Mix_Quit();
 	TTF_CloseFont(engine.defaultFont);
 	
 	SDL_DestroyRenderer(engine.renderer);
@@ -215,6 +241,13 @@ void SGE_Run(SGE_GameState *startState)
 	TTF_Quit();
 	IMG_Quit();
 	SDL_Quit();
+	SGE_LogPrintLine(SGE_LOG_INFO, "Quit SGE.");
+}
+
+void SGE_Quit()
+{
+	SGE_LogPrintLine(SGE_LOG_INFO, "SGE Quit Requested...");
+	engine.isRunning = false;
 }
 
 /*
@@ -227,7 +260,7 @@ void SGE_ToggleFullscreen()
 		if(SDL_SetWindowFullscreen(engine.window, SDL_WINDOW_FULLSCREEN) == 0)
 		{
 			engine.isFullscreen = SDL_TRUE;
-			SGE_LogPrintLine(SGE_LOG_DEBUG, "engine->isFullscreen: Toggled to %s", engine.isFullscreen ? "true" : "false");
+			SGE_LogPrintLine(SGE_LOG_INFO, "engine->isFullscreen: Toggled to %s", engine.isFullscreen ? "true" : "false");
 		}
 		else
 		{
@@ -239,7 +272,7 @@ void SGE_ToggleFullscreen()
 		if(SDL_SetWindowFullscreen(engine.window, 0) == 0)
 		{
 			engine.isFullscreen = SDL_FALSE;
-			SGE_LogPrintLine(SGE_LOG_DEBUG, "engine->isFullscreen: Toggled to %s", engine.isFullscreen ? "true" : "false");
+			SGE_LogPrintLine(SGE_LOG_INFO, "engine->isFullscreen: Toggled to %s", engine.isFullscreen ? "true" : "false");
 		}
 		else
 		{
@@ -261,11 +294,7 @@ void SGE_ToggleVsync()
 	SDL_GetRenderDrawColor(engine.renderer, &drawColor.r, &drawColor.g, &drawColor.b, &drawColor.a);
 	
 	/* Quit the current state and the GUI to free all textures */
-	SGE_printf("\n");
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Quitting State: \"%s\"...", currentState.name);
-	currentState.quit();
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Finished Quitting State.");
-	
+	SGE_QuitState(&currentState);
 	SGE_GUI_Quit();
 	
 	SDL_DestroyRenderer(engine.renderer);
@@ -286,25 +315,14 @@ void SGE_ToggleVsync()
 	
 	/* Reinitialize the GUI and the current state */
 	SGE_GUI_Init();
-	
-	SGE_printf("\n");
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Initializing state: \"%s\"...", currentState.name);
-	if(!currentState.init())
-	{
-		engine.isRunning = false;
-		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed Initializing State!");
-	}
-	else
-	{
-		SGE_LogPrintLine(SGE_LOG_DEBUG, "Finished Initializing State.\n");
-	}
+	SGE_InitState(&currentState);
 	
 	if(engine.isVsyncOn)
 	{
 		engine.frameRateCap = false;
-		SGE_LogPrintLine(SGE_LOG_DEBUG, "Turned OFF frame rate cap!");
+		SGE_LogPrintLine(SGE_LOG_INFO, "Turned OFF frame rate cap!");
 	}
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Toggled VSYNC %s!\n", engine.isVsyncOn ? "ON" : "OFF");
+	SGE_LogPrintLine(SGE_LOG_INFO, "Toggled VSYNC %s!\n", engine.isVsyncOn ? "ON" : "OFF");
 }
 
 /*
@@ -321,15 +339,20 @@ void SGE_SetTargetFPS(int fps)
 	if(fps == 0)
 	{
 		engine.frameRateCap = false;
-		SGE_LogPrintLine(SGE_LOG_DEBUG, "Turned OFF frame rate cap!");
+		SGE_LogPrintLine(SGE_LOG_INFO, "Turned OFF frame rate cap!");
 	}
 	else
 	{
 		engine.frameRateCap = true;
 		engine.fps = fps;
 		engine.perFrameTime = 1000 / fps;
-		SGE_LogPrintLine(SGE_LOG_DEBUG, "Target FPS set to %d FPS!", engine.fps);
+		SGE_LogPrintLine(SGE_LOG_INFO, "Target FPS set to %d", engine.fps);
 	}
+}
+
+void SGE_SetBackgroundColor(SDL_Color color)
+{
+	engine.defaultScreenClearColor = color;
 }
 
 void SGE_ClearScreen(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
@@ -349,6 +372,7 @@ void SGE_ClearScreenColor(SDL_Color color)
 */
 bool SGE_CheckRectsCollision(const SDL_Rect *r1, const SDL_Rect *r2)
 {
+	/* Can be replaced with SDL_HasIntersection() */
 	if(((r1->x >= r2->x) && (r1->x <= (r2->x + r2->w))) || (((r1->x + r1->w) >= r2->x) && ((r1->x + r1->w) <= (r2->x + r2->w))))
 	{
 		if(((r1->y >= r2->y) && (r1->y <= (r2->y + r2->h))) || (((r1->y + r1->h) >= r2->y) && ((r1->y + r1->h) <= (r2->y + r2->h))))
@@ -364,6 +388,7 @@ bool SGE_CheckRectsCollision(const SDL_Rect *r1, const SDL_Rect *r2)
 */
 bool SGE_isMouseOver(SDL_Rect *rect)
 {
+	/* Can be replaced with SDL_PointInRect() */
 	if(SGE_GetEngineData()->mouse_x > rect->x && SGE_GetEngineData()->mouse_x < (rect->x + rect->w))
 	{
 		if(SGE_GetEngineData()->mouse_y > rect->y && SGE_GetEngineData()->mouse_y < (rect->y + rect->h))

@@ -1,85 +1,228 @@
-#include "SGE_GUI.h"
 #include "SGE.h"
+#include "SGE_GUI.h"
 #include "SGE_Logger.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
+/* Engine data pointer */
 static SGE_EngineData *engine = NULL;
+
+/* Default GUI Fonts */
 static TTF_Font *buttonFont = NULL;
 static TTF_Font *panelTitleFont = NULL;
 static TTF_Font *labelFont = NULL;
 static TTF_Font *textBoxFont = NULL;
 static TTF_Font *listBoxFont = NULL;
 
-/* Panel Stack */
-#define MAX_PANELS 50
-static SGE_WindowPanel *panels[MAX_PANELS];
-static int panelCount = 0;
-static SGE_WindowPanel *tempPanel = NULL;
+/* List for current state's controls */
+static SGE_GUI_ControlList *currentStateControls = NULL;
 
-/* Lists for parentless controls */
-#define MAX_BUTTONS 50
-static SGE_Button *buttons[MAX_BUTTONS];
-static int buttonCount = 0;
+/* 
+* List for debug state's controls.
+* The debug state is a set of controls that overlay on top of the current engine state.
+* These controls include labels with FPS information, the debug panel and more.
+* The debug state is toggled with the F1 key.
+*/
+static SGE_GUI_ControlList debugStateControls;
 
-#define MAX_CHECKBOXES 50
-static SGE_CheckBox *checkBoxes[MAX_CHECKBOXES];
-static int checkBoxCount = 0;
+/* Toggle to disable debug state */
+static bool showDebugState = false;
 
-#define MAX_LABELS 50
-static SGE_TextLabel *labels[MAX_LABELS];
-static int labelCount = 0;
+/* The debug panel, toggled with F2 */
+static SGE_WindowPanel *debugPanel;
 
-#define MAX_SLIDERS 50
-static SGE_Slider *sliders[PANEL_MAX_SLIDERS];
-static int sliderCount = 0;
-
-#define MAX_TEXT_INPUT_BOXES 50
-static SGE_TextInputBox *textInputBoxes[MAX_TEXT_INPUT_BOXES];
-static int textInputBoxCount = 0;
-
-#define MAX_LISTBOXES 50
-static SGE_ListBox *listBoxes[MAX_LISTBOXES];
-static int listBoxCount = 0;
-
-/* Flag for displaying control boundboxes */
+/* Toggle for displaying control boundboxes */
 static bool showControlBounds = false;
+static SGE_CheckBox *showBoundsChkBox;
+static SGE_TextLabel *showBoundsLabel;
 static SDL_Color controlBoundsColor;
 
-/* Panel List as string for Debugging */
+/* Toggle for displaying frame rate information */
+static bool showFrameInfo = true;
+static SGE_CheckBox *showFrameInfoChkBox;
+static SGE_TextLabel *showFrameInfoLbl;
+
+/* List of panels in current state as a string */
 static char panelsListStr[200];
+
+static SGE_TextLabel *panelListLabel;
+static SGE_TextLabel *stateListLabel;
+
+/* Frame rate counter */
+static int frameCounter;
+static int countedFPS;
+static int lastFPSCountTime;
+//static int frameCountInterval = 500; // in ms
+
+/* Frame info labels */
+static char deltaStr[10];
+static SGE_TextLabel *deltaLabel;
+static char fpsStr[10];
+static SGE_TextLabel *fpsLabel;
+static char vsyncStr[10];
+static SGE_TextLabel *vsyncLabel;
+
+/* Generalization of GUI control lists */
+static void SGE_GUI_ControlList_HandleEvents(SGE_GUI_ControlList *controls);
+static void SGE_GUI_ControlList_Update(SGE_GUI_ControlList *controls);
+static void SGE_GUI_ControlList_Render(SGE_GUI_ControlList *controls);
+static void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls);
+
+/* Handler for frame info labels toggle */
+static void onShowFrameInfoToggle(void *data)
+{
+	if(!showFrameInfoChkBox->isChecked)
+	{
+		SGE_TextLabelSetText(deltaLabel, " ");
+		SGE_TextLabelSetText(fpsLabel, " ");
+		SGE_TextLabelSetText(vsyncLabel, " ");
+		deltaLabel->showBG = false;
+		fpsLabel->showBG = false;
+		vsyncLabel->showBG = false;
+	}
+	else
+	{
+		deltaLabel->showBG = true;
+		fpsLabel->showBG = true;
+		vsyncLabel->showBG = true;
+	}
+}
+
+static void SGE_GUI_DebugState_Init()
+{
+	SGE_GUI_ControlList *tempCurrentStateControls = currentStateControls;
+	currentStateControls = &debugStateControls;
+	
+	/* Create the debug panel */
+	debugPanel = SGE_CreateWindowPanel("Debug Panel", 0, 0, 320, 240);
+	debugPanel->isVisible = false;
+	//debugPanel->borderColor = SGE_COLOR_GRAY;
+	debugPanel->alpha = 200;
+	//debugPanel->backgroundColor = SGE_COLOR_GRAY;
+	//debugPanel->borderColor = SGE_COLOR_BLACK;
+	debugPanel->isMovable = false;
+	debugPanel->isMinimizable = false;
+	debugPanel->isResizable = false;
+	SGE_WindowPanelSetPosition(debugPanel, engine->screenWidth - debugPanel->boundBox.w, engine->screenHeight - debugPanel->boundBox.h);
+
+	/* Create panel and state list labels */
+	panelListLabel = SGE_CreateTextLabel(panelsListStr, 10, 10, SGE_COLOR_WHITE, debugPanel);
+	panelListLabel->mode = SGE_TEXT_MODE_SHADED;
+	stateListLabel = SGE_CreateTextLabel(" ", 10, 35, SGE_COLOR_WHITE, debugPanel);
+	stateListLabel->mode = SGE_TEXT_MODE_SHADED;
+
+	/* Create toggles */
+	showBoundsLabel = SGE_CreateTextLabel("Show Bound Boxes:", 0, 0, SGE_COLOR_BLACK, debugPanel);
+	SGE_TextLabelSetPositionNextTo(showBoundsLabel, stateListLabel->boundBox, SGE_CONTROL_DIRECTION_DOWN, 0, 10);
+	showBoundsChkBox = SGE_CreateCheckBox(0, 0, debugPanel);
+	SGE_CheckBoxSetPositionNextTo(showBoundsChkBox, showBoundsLabel->boundBox, SGE_CONTROL_DIRECTION_RIGHT_CENTERED, 15, 0);
+	
+	showFrameInfoLbl = SGE_CreateTextLabel("Show Frame Info:", 0, 0, SGE_COLOR_BLACK, debugPanel);
+	SGE_TextLabelSetPositionNextTo(showFrameInfoLbl, showBoundsLabel->boundBox, SGE_CONTROL_DIRECTION_DOWN, 0, 10);
+	showFrameInfoChkBox = SGE_CreateCheckBox(0, 0, debugPanel);
+	SGE_CheckBoxSetPositionNextTo(showFrameInfoChkBox, showFrameInfoLbl->boundBox, SGE_CONTROL_DIRECTION_RIGHT_CENTERED, 15, 0);
+	showFrameInfoChkBox->onMouseUp = onShowFrameInfoToggle;
+	showFrameInfoChkBox->isChecked = true;
+
+	/* Create frame info labels */
+	deltaLabel = SGE_CreateTextLabel(" ", 0, 0, SGE_COLOR_WHITE, NULL);
+	SGE_TextLabelSetPosition(deltaLabel, 0, engine->screenHeight - deltaLabel->boundBox.h);
+	SGE_TextLabelSetMode(deltaLabel, SGE_TEXT_MODE_SHADED);
+	SGE_TextLabelSetBGColor(deltaLabel, SGE_COLOR_BLACK);
+
+	fpsLabel = SGE_CreateTextLabel(" ", 0, 0, SGE_COLOR_WHITE, NULL);
+	SGE_TextLabelSetPositionNextTo(fpsLabel, deltaLabel->boundBox, SGE_CONTROL_DIRECTION_UP, 0, 0);
+	SGE_TextLabelSetMode(fpsLabel, SGE_TEXT_MODE_SHADED);
+	SGE_TextLabelSetBGColor(fpsLabel, SGE_COLOR_BLACK);
+
+	vsyncLabel = SGE_CreateTextLabel(" ", 0, 0, SGE_COLOR_WHITE, NULL);
+	SGE_TextLabelSetPositionNextTo(vsyncLabel, fpsLabel->boundBox, SGE_CONTROL_DIRECTION_UP, 0, 0);
+	SGE_TextLabelSetMode(vsyncLabel, SGE_TEXT_MODE_SHADED);
+	SGE_TextLabelSetBGColor(vsyncLabel, SGE_COLOR_BLACK);
+
+	currentStateControls = tempCurrentStateControls;
+}
+
+static void SGE_GUI_DebugState_Update()
+{
+	/* Sync toggles with checkboxes */
+	showControlBounds = showBoundsChkBox->isChecked;
+	showFrameInfo = showFrameInfoChkBox->isChecked;
+
+	/* Update frame info labels */
+	if(showFrameInfo)
+	{
+		sprintf(deltaStr, "dt: %.3f s", engine->delta);
+		SGE_TextLabelSetText(deltaLabel, deltaStr);
+
+		/* Calculate the framerate */
+		frameCounter++;
+		if((SDL_GetTicks() - lastFPSCountTime) > 1000)
+		{
+			countedFPS = frameCounter;
+			frameCounter = 0;
+			lastFPSCountTime = SDL_GetTicks();
+		}
+		sprintf(fpsStr, "fps: %d", countedFPS);
+		SGE_TextLabelSetText(fpsLabel, fpsStr);
+
+		if(engine->isVsyncOn) {
+			sprintf(vsyncStr, "vsync: on");
+		}
+		else {
+			sprintf(vsyncStr, "vsync: off");
+		}
+		SGE_TextLabelSetText(vsyncLabel, vsyncStr);
+	}
+}
 
 char *SGE_GetPanelListAsStr()
 {
 	return panelsListStr;
 }
 
-/* Internal Helper Functions */
-
+/* Prints a list of all panels in the current state onto a string */
 static void printPanelsStr()
 {
 	int i = 0;
 	char tempStr[100];
 
+	SGE_WindowPanel **panels = currentStateControls->panels;
+	int panelCount = currentStateControls->panelCount;
+
 	if(panelCount > 0)
 	{
-		sprintf(panelsListStr, "Panels: {%s: %s, ", panels[0]->titleStr, panels[0]->isActive ? "Active" : "Inactive");
+		/* Don't update the panel list string if handling debug state controls */
+		if(strcmp(panels[0]->titleStr, "Debug Panel") == 0)
+		{
+			return;
+		}
 		
+		/* For more than one panels */
 		if(panelCount > 1)
 		{
+			sprintf(panelsListStr, "Panels: {%s: %s, ", panels[0]->titleStr, panels[0]->isActive ? "Active" : "Inactive");
 			for(i = 1; i < panelCount - 1; i++)
 			{
 				sprintf(tempStr, "%s: %s, ", panels[i]->titleStr, panels[i]->isActive ? "Active" : "Inactive");
 				strcat(panelsListStr, tempStr);
 			}
+			sprintf(tempStr, "%s: %s}", panels[panelCount - 1]->titleStr, panels[panelCount - 1]->isActive ? "Active" : "Inactive");
+			strcat(panelsListStr, tempStr);
 		}
-		
-		sprintf(tempStr, "%s: %s}", panels[panelCount - 1]->titleStr, panels[panelCount - 1]->isActive ? "Active" : "Inactive");
-		strcat(panelsListStr, tempStr);
+		else /* For single panel */
+		{
+			sprintf(panelsListStr, "Panels: {%s: %s}", panels[0]->titleStr, panels[0]->isActive ? "Active" : "Inactive");
+		}
+	}
+	else /* For no panels */
+	{
+		sprintf(panelsListStr, "Panels: {}");
 	}
 }
 
+/* Wrapper for SGE_LogPrintLine() */
 static void SGE_GUI_LogPrintLine(SGE_LogLevel level, const char *format, ...)
 {
 	va_list args;
@@ -88,71 +231,72 @@ static void SGE_GUI_LogPrintLine(SGE_LogLevel level, const char *format, ...)
 	va_end(args);
 }
 
+/* Fallback handlers for GUI control events */
+
 static void onDownFallbackCallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onDownFallback Called!");
+	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onDownFallback Called!");
 }
 
 static void onUpFallbackCallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onUpFallback Called!");
+	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onUpFallback Called!");
 }
 
 static void onSlideFallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onSlideCallback Called!");
+	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onSlideCallback Called!");
 }
 
 static void onResizeFallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onResizeCallback Called!");
+	// SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onResizeCallback Called!");
 }
 
 static void onMoveFallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onMoveCallback Called!");
+	// SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onMoveCallback Called!");
 }
 
 static void onMinimizeFallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onMinimizeCallback Called!");
+	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onMinimizeCallback Called!");
 }
 
 static void onMaximizeFallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onMaximizeCallback Called!");
+	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onMaximizeCallback Called!");
 }
 
 static void onEnableFallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onEnableCallback Called!");
+	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onEnableCallback Called!");
 }
 
 static void onDisableFallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onDisableCallback Called!");
+	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onDisableCallback Called!");
 }
 
 static void onTextEnterFallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onTextEnterCallback Called!");
+	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onTextEnterCallback Called!");
 }
 
 static void onTextDeleteFallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onTextDeleteCallback Called!");
+	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onTextDeleteCallback Called!");
 }
 
 static void onSelectionChangeFallback(void *data)
 {
-	SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "onSelectionChangeCallback Called!");
+	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "onSelectionChangeCallback Called!");
 }
 
 /* Main GUI functions called by SGE.c */
 
 bool SGE_GUI_Init()
 {
-	SGE_printf("\n");
 	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Initializing SGE GUI...");
 	
 	engine = SGE_GetEngineData();
@@ -178,7 +322,7 @@ bool SGE_GUI_Init()
 	}
 	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Opened Panel Title font.");
 	
-	labelFont = TTF_OpenFont("assets/FreeSans.ttf", 24);
+	labelFont = TTF_OpenFont("assets/FreeSans.ttf", 18);
 	if(labelFont == NULL)
 	{
 		SGE_GUI_LogPrintLine(SGE_LOG_ERROR, "Failed to load default label font!");
@@ -204,148 +348,17 @@ bool SGE_GUI_Init()
 		return false;
 	}
 	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Opened default listBoxFont font.");
-	
-	/* Initialize the panel stack to NULL pointers */
-	int i = 0;
-	for(i = 0; i < MAX_PANELS; i++)
-	{
-		panels[i] = NULL;
-	}
-	
-	/* Initialize the parentless controls lists to NULL pointers */
-	for(i = 0; i < MAX_BUTTONS; i++)
-	{
-		buttons[i] = NULL;
-	}
-	
-	for(i = 0; i < MAX_CHECKBOXES; i++)
-	{
-		checkBoxes[i] = NULL;
-	}
-	
-	for(i = 0; i < MAX_LABELS; i++)
-	{
-		labels[i] = NULL;
-	}
-	
-	for(i = 0; i < MAX_SLIDERS; i++)
-	{
-		sliders[i] = NULL;
-	}
-	
-	for(i = 0; i < MAX_TEXT_INPUT_BOXES; i++)
-	{
-		textInputBoxes[i] = NULL;
-	}
-	
-	for(i = 0; i < MAX_LISTBOXES; i++)
-	{
-		listBoxes[i] = NULL;
-	}
-	
+
+	SGE_GUI_DebugState_Init();
+
 	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Finished Initializing SGE GUI.");
+	SGE_printf(SGE_LOG_DEBUG, "\n");
 	return true;
 }
 
 void SGE_GUI_Quit()
 {
-	int i = 0;
-	int j = 0;
-	int k = 0;
-	int l = 0;
-	int m = 0;
-	int n = 0; // Some of these are unnecessary \/(-_-)\/
-	
-	SGE_printf("\n");
 	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Quitting SGE GUI...");
-	
-	/* Go through each panel in the panels stack and destroy it's child controls and then the panel itself */
-	for(i = 0; i < panelCount; i++)
-	{
-		for(j = 0; j < panels[i]->buttonCount; j++)
-		{
-			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->Button %d", panels[i]->titleStr, j + 1);
-			SGE_DestroyButton(panels[i]->buttons[j]);
-		}
-		for(k = 0; k < panels[i]->checkBoxCount; k++)
-		{
-			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->CheckBox %d", panels[i]->titleStr, k + 1);
-			SGE_DestroyCheckBox(panels[i]->checkBoxes[k]);
-		}
-		for(l = 0; l < panels[i]->textLabelCount; l++)
-		{
-			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->Label %d", panels[i]->titleStr, l + 1);
-			SGE_DestroyTextLabel(panels[i]->textLabels[l]);
-		}
-		for(m = 0; m < panels[i]->sliderCount; m++)
-		{
-			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->Slider %d", panels[i]->titleStr, m + 1);
-			SGE_DestroySlider(panels[i]->sliders[m]);
-		}
-		for(n = 0; n < panels[i]->textInputBoxCount; n++)
-		{
-			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->TextInputBox %d", panels[i]->titleStr, n + 1);
-			SGE_DestroyTextInputBox(panels[i]->textInputBoxes[n]);
-		}
-		for(n = 0; n < panels[i]->listBoxCount; n++)
-		{
-			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->ListBox %d", panels[i]->titleStr, n + 1);
-			SGE_DestroyListBox(panels[i]->listBoxes[n]);
-		}
-		
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Panel: %s", panels[i]->titleStr);
-		SGE_DestroyWindowPanel(panels[i]);
-	}
-	
-	/* Reset the panel stack to zero */
-	for(i = 0; i < MAX_PANELS; i++)
-	{
-		panels[i] = NULL;
-	}
-	panelCount = 0;
-	
-	/* Destroy all parentless controls */
-	for(i = 0; i < buttonCount; i++)
-	{
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}->Button %d", i + 1);
-		SGE_DestroyButton(buttons[i]);
-	}
-	buttonCount = 0;
-	
-	for(i = 0; i < checkBoxCount; i++)
-	{
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}->CheckBox [%d]", i + 1);
-		SGE_DestroyCheckBox(checkBoxes[i]);
-	}
-	checkBoxCount = 0;
-	
-	for(i = 0; i < labelCount; i++)
-	{
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}-><Label %d>", i + 1);
-		SGE_DestroyTextLabel(labels[i]);
-	}
-	labelCount = 0;
-	
-	for(i = 0; i < sliderCount; i++)
-	{
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}-><Slider %d>", i + 1);
-		SGE_DestroySlider(sliders[i]);
-	}
-	sliderCount = 0;
-	
-	for(i = 0; i < textInputBoxCount; i++)
-	{
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}-><TextInputBox %d>", i + 1);
-		SGE_DestroyTextInputBox(textInputBoxes[i]);
-	}
-	textInputBoxCount = 0;
-	
-	for(i = 0; i < listBoxCount; i++)
-	{
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}-><ListBox %d>", i + 1);
-		SGE_DestroyListBox(listBoxes[i]);
-	}
-	listBoxCount = 0;
 	
 	/* Close all GUI Fonts */
 	if(buttonFont != NULL)
@@ -377,44 +390,129 @@ void SGE_GUI_Quit()
 		TTF_CloseFont(listBoxFont);
 		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Closed default listBoxFont font.");
 	}
+
+	SGE_GUI_FreeControlList(&debugStateControls);
 	
 	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Finished Quitting SGE GUI.");
+	SGE_printf(SGE_LOG_DEBUG, "\n");
 }
 
 void SGE_GUI_HandleEvents()
 {
-	int i = 0;
-	
 	if(engine->event.type == SDL_KEYDOWN)
 	{
+		/* Toggle debug state visibility */
 		if(engine->event.key.keysym.sym == SDLK_F1)
-			showControlBounds = !showControlBounds;
+		{
+			SGE_SetTextureWordWrap(500);
+			SGE_TextLabelSetText(panelListLabel, panelsListStr);
+			SGE_TextLabelSetText(stateListLabel, SGE_GetStateNames());
+			showDebugState = !showDebugState;
+		}
+		
+		/* Toggle debug panel visibility */
+		if(showDebugState)
+		{
+			if(engine->event.key.keysym.sym == SDLK_F2)
+			{			
+				debugPanel->isVisible = !debugPanel->isVisible;
+			}
+		}
 	}
+	
+	SGE_GUI_ControlList_HandleEvents(currentStateControls);
+
+	if(showDebugState)
+	{
+		SGE_GUI_ControlList *tempCurrentStateControls = currentStateControls;
+		currentStateControls = &debugStateControls;
+		SGE_GUI_ControlList_HandleEvents(&debugStateControls);
+		currentStateControls = tempCurrentStateControls;
+	}
+}
+
+void SGE_GUI_Update()
+{
+	SGE_GUI_ControlList_Update(currentStateControls);
+	
+	if(showDebugState)
+	{
+		SGE_GUI_ControlList *tempCurrentStateControls = currentStateControls;
+		currentStateControls = &debugStateControls;
+		SGE_GUI_DebugState_Update();
+		SGE_GUI_ControlList_Update(&debugStateControls);
+		currentStateControls = tempCurrentStateControls;
+	}
+}
+
+void SGE_GUI_Render()
+{
+	SGE_GUI_ControlList_Render(currentStateControls);
+
+	if(showDebugState)
+	{
+		SGE_GUI_ControlList *tempCurrentStateControls = currentStateControls;
+		currentStateControls = &debugStateControls;
+		SGE_GUI_ControlList_Render(&debugStateControls);
+		currentStateControls = tempCurrentStateControls;
+	}
+}
+
+/* Syncs GUI with game state */
+void SGE_GUI_UpdateCurrentState(const char *nextState)
+{
+	int i;
+	currentStateControls = SGE_GetStateGUIList(nextState);
+	printPanelsStr();
+	
+	/* Reset control states */
+	for(i = 0; i < currentStateControls->buttonCount; i++)
+	{
+		currentStateControls->buttons[i]->state = SGE_CONTROL_STATE_NORMAL;
+	}
+
+	for(i = 0; i < currentStateControls->checkBoxCount; i++)
+	{
+		currentStateControls->checkBoxes[i]->state = SGE_CONTROL_STATE_NORMAL;
+	}
+
+	for(i = 0; i < currentStateControls->sliderCount; i++)
+	{
+		currentStateControls->sliders[i]->state = SGE_CONTROL_STATE_NORMAL;
+	}
+}
+
+static void SGE_GUI_ControlList_HandleEvents(SGE_GUI_ControlList *controls)
+{
+	int i = 0;
+
+	SGE_WindowPanel **panels = controls->panels;
+	int panelCount = controls->panelCount;
 	
 	/* Handle Events for parentless controls */
-	for(i = 0; i < buttonCount; i++)
+	for(i = 0; i < controls->buttonCount; i++)
 	{
-		SGE_ButtonHandleEvents(buttons[i]);
+		SGE_ButtonHandleEvents(controls->buttons[i]);
 	}
 	
-	for(i = 0; i < checkBoxCount; i++)
+	for(i = 0; i < controls->checkBoxCount; i++)
 	{
-		SGE_CheckBoxHandleEvents(checkBoxes[i]);
+		SGE_CheckBoxHandleEvents(controls->checkBoxes[i]);
 	}
 	
-	for(i = 0; i < sliderCount; i++)
+	for(i = 0; i < controls->sliderCount; i++)
 	{
-		SGE_SliderHandleEvents(sliders[i]);
+		SGE_SliderHandleEvents(controls->sliders[i]);
 	}
 	
-	for(i = 0; i < textInputBoxCount; i++)
+	for(i = 0; i < controls->textInputBoxCount; i++)
 	{
-		SGE_TextInputBoxHandleEvents(textInputBoxes[i]);
+		SGE_TextInputBoxHandleEvents(controls->textInputBoxes[i]);
 	}
 	
-	for(i = 0; i < listBoxCount; i++)
+	for(i = 0; i < controls->listBoxCount; i++)
 	{
-		SGE_ListBoxHandleEvents(listBoxes[i]);
+		SGE_ListBoxHandleEvents(controls->listBoxes[i]);
 	}
 	
 	/* Handle Events for all the panels themselves */
@@ -427,7 +525,7 @@ void SGE_GUI_HandleEvents()
 	/* Handle Events for only the active panel's controls */
 	if(panelCount != 0)
 	{
-		if(panels[panelCount - 1]->isActive)
+		if(panels[panelCount - 1]->isVisible)
 		{
 			for(i = 0; i < panels[panelCount - 1]->buttonCount; i++)
 			{
@@ -457,35 +555,41 @@ void SGE_GUI_HandleEvents()
 	}
 }
 
-void SGE_GUI_Update()
+static void SGE_GUI_ControlList_Update(SGE_GUI_ControlList *controls)
 {
 	int i = 0;
 	int j = 0;
+
+	SGE_WindowPanel **panels = controls->panels;
+	int panelCount = controls->panelCount;
+
+	panels = controls->panels;
+	panelCount = controls->panelCount;
 	
 	/* Update the parentless controls */
-	for(i = 0; i < buttonCount; i++)
+	for(i = 0; i < controls->buttonCount; i++)
 	{
-		SGE_ButtonUpdate(buttons[i]);
+		SGE_ButtonUpdate(controls->buttons[i]);
 	}
 	
-	for(i = 0; i < checkBoxCount; i++)
+	for(i = 0; i < controls->checkBoxCount; i++)
 	{
-		SGE_CheckBoxUpdate(checkBoxes[i]);
+		SGE_CheckBoxUpdate(controls->checkBoxes[i]);
 	}
 	
-	for(i = 0; i < sliderCount; i++)
+	for(i = 0; i < controls->sliderCount; i++)
 	{
-		SGE_SliderUpdate(sliders[i]);
+		SGE_SliderUpdate(controls->sliders[i]);
 	}
 	
-	for(i = 0; i < textInputBoxCount; i++)
+	for(i = 0; i < controls->textInputBoxCount; i++)
 	{
-		SGE_TextInputBoxUpdate(textInputBoxes[i]);
+		SGE_TextInputBoxUpdate(controls->textInputBoxes[i]);
 	}
 	
-	for(i = 0; i < listBoxCount; i++)
+	for(i = 0; i < controls->listBoxCount; i++)
 	{
-		SGE_ListBoxUpdate(listBoxes[i]);
+		SGE_ListBoxUpdate(controls->listBoxes[i]);
 	}
 	
 	if(panelCount != 0)
@@ -526,49 +630,154 @@ void SGE_GUI_Update()
 	}
 }
 
-void SGE_GUI_Render()
+static void SGE_GUI_ControlList_Render(SGE_GUI_ControlList *controls)
 {
 	int i = 0;
 	
 	/* Render all the panels and their child controls */
-	for(i = 0; i < panelCount; i++)
+	for(i = 0; i < controls->panelCount; i++)
 	{
-		if(panels[i]->isVisible)
+		if(controls->panels[i]->isVisible)
 		{
-			SGE_WindowPanelRender(panels[i]);
+			SGE_WindowPanelRender(controls->panels[i]);
 		}
 	}
 	
 	/* Render the parentless controls */
-	for(i = 0; i < buttonCount; i++)
+	for(i = 0; i < controls->buttonCount; i++)
 	{
-		SGE_ButtonRender(buttons[i]);
+		SGE_ButtonRender(controls->buttons[i]);
 	}
 	
-	for(i = 0; i < checkBoxCount; i++)
+	for(i = 0; i < controls->checkBoxCount; i++)
 	{
-		SGE_CheckBoxRender(checkBoxes[i]);
+		SGE_CheckBoxRender(controls->checkBoxes[i]);
 	}
 	
-	for(i = 0; i < labelCount; i++)
+	for(i = 0; i < controls->labelCount; i++)
 	{
-		SGE_TextLabelRender(labels[i]);
+		SGE_TextLabelRender(controls->labels[i]);
 	}
 	
-	for(i = 0; i < sliderCount; i++)
+	for(i = 0; i < controls->sliderCount; i++)
 	{
-		SGE_SliderRender(sliders[i]);
+		SGE_SliderRender(controls->sliders[i]);
 	}
 	
-	for(i = 0; i < textInputBoxCount; i++)
+	for(i = 0; i < controls->textInputBoxCount; i++)
 	{
-		SGE_TextInputBoxRender(textInputBoxes[i]);
+		SGE_TextInputBoxRender(controls->textInputBoxes[i]);
 	}
 	
-	for(i = 0; i < listBoxCount; i++)
+	for(i = 0; i < controls->listBoxCount; i++)
 	{
-		SGE_ListBoxRender(listBoxes[i]);
+		SGE_ListBoxRender(controls->listBoxes[i]);
 	}
+}
+
+static void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls)
+{
+	int i = 0;
+	int j = 0;
+	int k = 0;
+	int l = 0;
+	int m = 0;
+	int n = 0; // Some of these are unnecessary \/(-_-)\/
+
+	for(i = 0; i < controls->buttonCount; i++)
+	{
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}-><Button> %d", i + 1);
+		SGE_DestroyButton(controls->buttons[i]);
+		controls->buttons[i] = NULL;
+	}
+	controls->buttonCount = 0;
+
+	for(i = 0; i < controls->checkBoxCount; i++)
+	{
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}-><Checkbox> %d", i + 1);
+		SGE_DestroyCheckBox(controls->checkBoxes[i]);
+		controls->checkBoxes[i] = NULL;
+	}
+	controls->checkBoxCount = 0;
+
+	for(i = 0; i < controls->labelCount; i++)
+	{
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}-><TextLabel> %d", i + 1);
+		SGE_DestroyTextLabel(controls->labels[i]);
+		controls->labels[i] = NULL;
+	}
+	controls->labelCount = 0;
+
+	for(i = 0; i < controls->sliderCount; i++)
+	{
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}-><Slider> %d", i + 1);
+		SGE_DestroySlider(controls->sliders[i]);
+		controls->sliders[i] = NULL;
+	}
+	controls->sliderCount = 0;
+
+	for(i = 0; i < controls->textInputBoxCount; i++)
+	{
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}-><TextInputBox> %d", i + 1);
+		SGE_DestroyTextInputBox(controls->textInputBoxes[i]);
+		controls->textInputBoxes[i] = NULL;
+	}
+	controls->textInputBoxCount = 0;
+
+	for(i = 0; i < controls->listBoxCount; i++)
+	{
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: {NULL}-><ListBox> %d", i + 1);
+		SGE_DestroyListBox(controls->listBoxes[i]);
+		controls->listBoxes[i] = NULL;
+	}
+	controls->listBoxCount = 0;
+
+	/* Go through each panel in the panels stack and destroy it's child controls and then the panel itself */
+	for(i = 0; i < controls->panelCount; i++)
+	{
+		for(j = 0; j < controls->panels[i]->buttonCount; j++)
+		{
+			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->Button %d", controls->panels[i]->titleStr, j + 1);
+			SGE_DestroyButton(controls->panels[i]->buttons[j]);
+		}
+		for(k = 0; k < controls->panels[i]->checkBoxCount; k++)
+		{
+			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->CheckBox %d", controls->panels[i]->titleStr, k + 1);
+			SGE_DestroyCheckBox(controls->panels[i]->checkBoxes[k]);
+		}
+		for(l = 0; l < controls->panels[i]->textLabelCount; l++)
+		{
+			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->Label %d", controls->panels[i]->titleStr, l + 1);
+			SGE_DestroyTextLabel(controls->panels[i]->textLabels[l]);
+		}
+		for(m = 0; m < controls->panels[i]->sliderCount; m++)
+		{
+			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->Slider %d", controls->panels[i]->titleStr, m + 1);
+			SGE_DestroySlider(controls->panels[i]->sliders[m]);
+		}
+		for(n = 0; n < controls->panels[i]->textInputBoxCount; n++)
+		{
+			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->TextInputBox %d", controls->panels[i]->titleStr, n + 1);
+			SGE_DestroyTextInputBox(controls->panels[i]->textInputBoxes[n]);
+		}
+		for(n = 0; n < controls->panels[i]->listBoxCount; n++)
+		{
+			SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Control: %s->ListBox %d", controls->panels[i]->titleStr, n + 1);
+			SGE_DestroyListBox(controls->panels[i]->listBoxes[n]);
+		}
+		
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Destroyed Panel: %s", controls->panels[i]->titleStr);
+		SGE_DestroyWindowPanel(controls->panels[i]);
+		controls->panels[i] = NULL;
+	}
+	controls->panelCount = 0;
+}
+
+void SGE_GUI_FreeState(const char *name)
+{
+	SGE_GUI_ControlList *controls = SGE_GetStateGUIList(name);
+	if(controls != NULL)
+		SGE_GUI_FreeControlList(controls);
 }
 
 /* GUI Control Functions */
@@ -596,18 +805,18 @@ SGE_Button *SGE_CreateButton(const char *text, int x, int y, struct SGE_WindowPa
 	}
 	else
 	{
-		if(buttonCount == MAX_BUTTONS)
+		if(currentStateControls->buttonCount == STATE_MAX_BUTTONS)
 		{
-			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add Button! Max amount of parentless buttons [%d] reached.", MAX_BUTTONS);
+			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add Button! Max amount of parentless buttons [%d] reached.", STATE_MAX_BUTTONS);
 			free(button);
 			return NULL;
 		}
 		/* Add this new button to the top of the parentless buttons list */
-		buttons[buttonCount] = button;
-		buttonCount += 1;
+		currentStateControls->buttons[currentStateControls->buttonCount] = button;
+		currentStateControls->buttonCount += 1;
 		button->parentPanel = NULL;
 		button->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Button %d", buttonCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Button %d", currentStateControls->buttonCount);
 	}
 	
 	button->x = x;
@@ -789,9 +998,9 @@ void SGE_ButtonRender(SGE_Button *button)
 			if(SGE_isMouseOver(&button->parentPanel->background) && !SGE_isMouseOver(&button->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&button->parentPanel->verticalScrollbarBG))
 				SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, button->alpha);
 			
-			for(i = button->parentPanel->index + 1; i < panelCount; i++)
+			for(i = button->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&panels[i]->border))
+				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
 					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, button->alpha);
 			}
 		}
@@ -863,18 +1072,18 @@ SGE_CheckBox *SGE_CreateCheckBox(int x, int y, struct SGE_WindowPanel *panel)
 	}
 	else
 	{
-		if(checkBoxCount == MAX_CHECKBOXES)
+		if(currentStateControls->checkBoxCount == STATE_MAX_CHECKBOXES)
 		{
-			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add CheckBox! Max amount of parentless checkboxes [%d] reached.", MAX_CHECKBOXES);
+			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add CheckBox! Max amount of parentless checkboxes [%d] reached.", STATE_MAX_CHECKBOXES);
 			free(checkBox);
 			return NULL;
 		}
 		/* Add this new checkbox to the top of the parentless checkboxes list */
-		checkBoxes[checkBoxCount] = checkBox;
-		checkBoxCount += 1;
+		currentStateControls->checkBoxes[currentStateControls->checkBoxCount] = checkBox;
+		currentStateControls->checkBoxCount += 1;
 		checkBox->parentPanel = NULL;
 		checkBox->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->CheckBox %d", checkBoxCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->CheckBox %d", currentStateControls->checkBoxCount);
 	}
 	
 	checkBox->x = x;
@@ -1029,9 +1238,9 @@ void SGE_CheckBoxRender(SGE_CheckBox *checkBox)
 			if(SGE_isMouseOver(&checkBox->parentPanel->background) && !SGE_isMouseOver(&checkBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&checkBox->parentPanel->verticalScrollbarBG))
 				SDL_SetRenderDrawColor(engine->renderer, 150, 150, 150, checkBox->alpha);
 			
-			for(i = checkBox->parentPanel->index + 1; i < panelCount; i++)
+			for(i = checkBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&panels[i]->border))
+				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
 					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, checkBox->alpha);
 			}
 		}
@@ -1083,7 +1292,7 @@ void SGE_CheckBoxSetPosition(SGE_CheckBox *checkBox, int x, int y)
 	}
 }
 
-SGE_TextLabel *SGE_CreateTextLabel(const char *text, int x, int y, SDL_Color color, struct SGE_WindowPanel *panel)
+SGE_TextLabel *SGE_CreateTextLabelCustom(const char *text, int x, int y, SDL_Color color, TTF_Font *font, struct SGE_WindowPanel *panel)
 {
 	SGE_TextLabel *label = NULL;
 	label = (SGE_TextLabel *)malloc(sizeof(SGE_TextLabel));
@@ -1105,29 +1314,31 @@ SGE_TextLabel *SGE_CreateTextLabel(const char *text, int x, int y, SDL_Color col
 	}
 	else
 	{
-		if(labelCount == MAX_LABELS)
+		if(currentStateControls->labelCount == STATE_MAX_LABELS)
 		{
-			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add Label! Max amount of parentless labels [%d] reached.", MAX_LABELS);
+			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add Label! Max amount of parentless labels [%d] reached.", STATE_MAX_LABELS);
 			free(label);
 			return NULL;
 		}
-		labels[labelCount] = label;
-		labelCount += 1;
+		currentStateControls->labels[currentStateControls->labelCount] = label;
+		currentStateControls->labelCount += 1;
 		label->parentPanel = NULL;
 		label->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Label %d", labelCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Label %d", currentStateControls->labelCount);
 	}
 	
 	label->x = x;
 	label->y = y;
 	
 	strncpy(label->text, text, 200);
+	label->font = font;
 	label->fgColor = color;
 	label->bgColor = SGE_COLOR_GRAY;
 	label->showBG = false;
 	label->mode = SGE_TEXT_MODE_BLENDED;
+	label->isVisible = true;
 	//SGE_SetTextureWordWrap();
-	label->textImg = SGE_CreateTextureFromText(text, labelFont, label->fgColor, label->mode);
+	label->textImg = SGE_CreateTextureFromText(text, font, label->fgColor, label->mode);
 	
 	if(label->parentPanel != NULL)
 	{
@@ -1154,6 +1365,11 @@ SGE_TextLabel *SGE_CreateTextLabel(const char *text, int x, int y, SDL_Color col
 	return label;
 }
 
+SGE_TextLabel *SGE_CreateTextLabel(const char *text, int x, int y, SDL_Color color, struct SGE_WindowPanel *panel)
+{
+	return SGE_CreateTextLabelCustom(text, x, y, color, labelFont, panel);
+}
+
 void SGE_DestroyTextLabel(SGE_TextLabel *label)
 {
 	if(label != NULL)
@@ -1165,6 +1381,11 @@ void SGE_DestroyTextLabel(SGE_TextLabel *label)
 
 void SGE_TextLabelRender(SGE_TextLabel *label)
 {
+	if(!label->isVisible)
+	{
+		return;
+	}
+
 	if(label->parentPanel != NULL)
 	{
 		label->boundBox.x = label->x + label->parentPanel->background.x + label->parentPanel->x_scroll_offset;
@@ -1221,9 +1442,14 @@ void SGE_TextLabelSetPosition(SGE_TextLabel *label, int x, int y)
 void SGE_TextLabelSetText(SGE_TextLabel *label, const char *text)
 {
 	strncpy(label->text, text, 200);
-	SGE_UpdateTextureFromText(label->textImg, label->text, labelFont, label->fgColor, label->mode);
+	SGE_UpdateTextureFromText(label->textImg, label->text, label->font, label->fgColor, label->mode);
 	label->boundBox.w = label->textImg->w;
 	label->boundBox.h = label->textImg->h;
+	
+	if(label->parentPanel != NULL)
+	{
+		SGE_WindowPanelCalculateMCR(label->parentPanel, label->boundBox);
+	}
 }
 
 void SGE_TextLabelSetFGColor(SGE_TextLabel *label, SDL_Color fg)
@@ -1245,6 +1471,16 @@ void SGE_TextLabelSetMode(SGE_TextLabel *label, SGE_TextRenderMode mode)
 {
 	label->mode = mode;
 	SGE_UpdateTextureFromText(label->textImg, label->text, labelFont, label->fgColor, label->mode);
+}
+
+void SGE_TextLabelSetAlpha(SGE_TextLabel *label, Uint8 alpha)
+{
+	SGE_SetTextureAlpha(label->textImg, alpha);
+}
+
+void SGE_TextLabelSetVisible(SGE_TextLabel *label, bool visible)
+{
+	label->isVisible = visible;
 }
 
 SGE_Slider *SGE_CreateSlider(int x, int y, struct SGE_WindowPanel *panel)
@@ -1272,17 +1508,17 @@ SGE_Slider *SGE_CreateSlider(int x, int y, struct SGE_WindowPanel *panel)
 	}
 	else
 	{
-		if(sliderCount == MAX_SLIDERS)
+		if(currentStateControls->sliderCount == STATE_MAX_SLIDERS)
 		{
-			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add Slider! Max amount of parentless sliders [%d] reached.", MAX_SLIDERS);
+			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add Slider! Max amount of parentless sliders [%d] reached.", STATE_MAX_SLIDERS);
 			free(slider);
 			return NULL;
 		}
-		sliders[sliderCount] = slider;
-		sliderCount += 1;
+		currentStateControls->sliders[currentStateControls->sliderCount] = slider;
+		currentStateControls->sliderCount += 1;
 		slider->parentPanel = NULL;
 		slider->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Slider %d", sliderCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Slider %d", currentStateControls->sliderCount);
 	}
 	
 	if(slider->parentPanel != NULL)
@@ -1482,9 +1718,9 @@ void SGE_SliderRender(SGE_Slider *slider)
 			if(SGE_isMouseOver(&slider->parentPanel->background) && !SGE_isMouseOver(&slider->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&slider->parentPanel->verticalScrollbarBG))
 				SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, slider->alpha);
 			
-			for(i = slider->parentPanel->index + 1; i < panelCount; i++)
+			for(i = slider->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&panels[i]->border))
+				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
 					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, slider->alpha);
 			}
 		}
@@ -1587,18 +1823,18 @@ SGE_TextInputBox *SGE_CreateTextInputBox(int maxTextLength, int x, int y, struct
 	}
 	else
 	{
-		if(buttonCount == MAX_TEXT_INPUT_BOXES)
+		if(currentStateControls->textInputBoxCount == STATE_MAX_TEXT_INPUT_BOXES)
 		{
-			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add TextInputBox! Max amount of parentless textInputBoxes [%d] reached.", MAX_TEXT_INPUT_BOXES);
+			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add TextInputBox! Max amount of parentless textInputBoxes [%d] reached.", STATE_MAX_TEXT_INPUT_BOXES);
 			free(textInputBox);
 			return NULL;
 		}
 		/* Add this new textInputBox to the top of the parentless buttons list */
-		textInputBoxes[textInputBoxCount] = textInputBox;
-		textInputBoxCount += 1;
+		currentStateControls->textInputBoxes[currentStateControls->textInputBoxCount] = textInputBox;
+		currentStateControls->textInputBoxCount += 1;
 		textInputBox->parentPanel = NULL;
 		textInputBox->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->TextInputBox %d", textInputBoxCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->TextInputBox %d", currentStateControls->textInputBoxCount);
 	}
 	
 	textInputBox->x = x;
@@ -1624,6 +1860,7 @@ SGE_TextInputBox *SGE_CreateTextInputBox(int maxTextLength, int x, int y, struct
 	textInputBox->inputBox.y = textInputBox->boundBox.y;
 	textInputBox->inputBox.w = 250;
 	textInputBox->inputBox.h = 100;
+	
 	SGE_SetTextureWordWrap(textInputBox->inputBox.w);
 	
 	textInputBox->boundBox.w = textInputBox->inputBox.w;
@@ -1798,9 +2035,9 @@ void SGE_TextInputBoxRender(SGE_TextInputBox *textInputBox)
 				SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, textInputBox->alpha);
 			
 			int i = 0;
-			for(i = textInputBox->parentPanel->index + 1; i < panelCount; i++)
+			for(i = textInputBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&panels[i]->border))
+				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
 					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, textInputBox->alpha);
 			}
 		}
@@ -1872,18 +2109,18 @@ SGE_ListBox *SGE_CreateListBox(int listCount, char list[][LIST_OPTION_LENGTH], i
 	}
 	else
 	{
-		if(listBoxCount == MAX_LISTBOXES)
+		if(currentStateControls->listBoxCount == STATE_MAX_LISTBOXES)
 		{
-			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add ListBox! Max amount of parentless listBoxes [%d] reached.", MAX_LISTBOXES);
+			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add ListBox! Max amount of parentless listBoxes [%d] reached.", STATE_MAX_LISTBOXES);
 			free(listBox);
 			return NULL;
 		}
 		/* Add this new listBox to the top of the parentless listBoxes list */
-		listBoxes[listBoxCount] = listBox;
-		listBoxCount += 1;
+		currentStateControls->listBoxes[currentStateControls->listBoxCount] = listBox;
+		currentStateControls->listBoxCount += 1;
 		listBox->parentPanel = NULL;
 		listBox->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->ListBox %d", listBoxCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->ListBox %d", currentStateControls->listBoxCount);
 	}
 	
 	listBox->x = x;
@@ -2057,9 +2294,9 @@ void SGE_ListBoxRender(SGE_ListBox *listBox)
 				SDL_SetRenderDrawColor(engine->renderer, 150, 150, 150, listBox->alpha);
 			
 			int i = 0;
-			for(i = listBox->parentPanel->index + 1; i < panelCount; i++)
+			for(i = listBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&panels[i]->border))
+				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
 					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, listBox->alpha);
 			}
 		}
@@ -2088,9 +2325,9 @@ void SGE_ListBoxRender(SGE_ListBox *listBox)
 						SDL_SetRenderDrawColor(engine->renderer, 50, 50, 150, listBox->alpha);
 					
 					int i = 0;
-					for(i = listBox->parentPanel->index + 1; i < panelCount; i++)
+					for(i = listBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 					{
-						if(SGE_isMouseOver(&panels[i]->border))
+						if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
 							SDL_SetRenderDrawColor(engine->renderer, 255, 255, listBox->alpha, listBox->alpha);
 					}
 				}
@@ -2188,9 +2425,9 @@ void SGE_MinimizeButtonHandleEvents(SGE_MinimizeButton *minButton)
 			if(SGE_isMouseOver(&minButton->boundBox))
 			{
 				minButton->state = SGE_CONTROL_STATE_CLICKED;
-				for(i = minButton->parentPanel->index + 1; i < panelCount; i++)
+				for(i = minButton->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 				{
-					if(SGE_isMouseOver(&panels[i]->border))
+					if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
 						minButton->state = SGE_CONTROL_STATE_NORMAL;
 				}
 			}
@@ -2221,9 +2458,9 @@ void SGE_MinimizeButtonHandleEvents(SGE_MinimizeButton *minButton)
 			if(SGE_isMouseOver(&minButton->boundBox))
 			{
 				minButton->state = SGE_CONTROL_STATE_HOVER;
-				for(i = minButton->parentPanel->index + 1; i < panelCount; i++)
+				for(i = minButton->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 				{
-					if(SGE_isMouseOver(&panels[i]->border))
+					if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
 						minButton->state = SGE_CONTROL_STATE_NORMAL;
 				}
 			}
@@ -2260,9 +2497,9 @@ void SGE_MinimizeButtonRender(SGE_MinimizeButton *minButton)
 	{
 		SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, minButton->parentPanel->alpha);
 		
-		for(i = minButton->parentPanel->index + 1; i < panelCount; i++)
+		for(i = minButton->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 		{
-			if(SGE_isMouseOver(&panels[i]->border))
+			if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
 				SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, minButton->parentPanel->alpha);
 		}
 	}
@@ -2272,10 +2509,13 @@ void SGE_MinimizeButtonRender(SGE_MinimizeButton *minButton)
 SGE_WindowPanel *SGE_CreateWindowPanel(const char *title, int x, int y, int w, int h) 
 {
 	int i = 0;
+
+	SGE_WindowPanel **panels = currentStateControls->panels;
+	int panelCount = currentStateControls->panelCount;
 	
-	if(panelCount == MAX_PANELS)
+	if(panelCount == STATE_MAX_PANELS)
 	{
-		SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to create panel %s! Max amount of Panels [%d] reached.", title, MAX_PANELS);
+		SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to create panel %s! Max amount of Panels [%d] reached.", title, STATE_MAX_PANELS);
 		return NULL;
 	}
 	
@@ -2283,9 +2523,9 @@ SGE_WindowPanel *SGE_CreateWindowPanel(const char *title, int x, int y, int w, i
 	SGE_WindowPanel *panel = NULL;
 	panel = (SGE_WindowPanel *)malloc(sizeof(SGE_WindowPanel));
 	
-	panel->index = panelCount;
-	panels[panelCount] = panel;
-	panelCount += 1;
+	panel->index = currentStateControls->panelCount;
+	panels[currentStateControls->panelCount] = panel;
+	currentStateControls->panelCount += 1;
 	
 	strncpy(panel->titleStr, title, 50);
 	SGE_SetActiveWindowPanel(panel);
@@ -2412,37 +2652,6 @@ SGE_WindowPanel *SGE_CreateWindowPanel(const char *title, int x, int y, int w, i
 	panel->onMaximize = onMaximizeFallback;
 	panel->onMaximize_data = NULL;
 	
-	/* Initialize the control lists for this panel to NULL */
-	for(i = 0; i < PANEL_MAX_BUTTONS; i++)
-	{
-		panel->buttons[i] = NULL;
-	}
-	
-	for(i = 0; i < PANEL_MAX_CHECKBOXES; i++)
-	{
-		panel->checkBoxes[i] = NULL;
-	}
-	
-	for(i = 0; i < PANEL_MAX_LABELS; i++)
-	{
-		panel->textLabels[i] = NULL;
-	}
-	
-	for(i = 0; i < PANEL_MAX_SLIDERS; i++)
-	{
-		panel->sliders[i] = NULL;
-	}
-	
-	for(i = 0; i < PANEL_MAX_TEXT_INPUT_BOXES; i++)
-	{
-		panel->textInputBoxes[i] = NULL;
-	}
-	
-	for(i = 0; i < PANEL_MAX_LISTBOXES; i++)
-	{
-		panel->listBoxes[i] = NULL;
-	}
-	
 	panel->controlCount = 0;
 	panel->buttonCount = 0;
 	panel->checkBoxCount = 0;
@@ -2467,6 +2676,9 @@ void SGE_DestroyWindowPanel(SGE_WindowPanel *panel)
 void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 {
 	int i = 0;
+
+	SGE_WindowPanel **panels = currentStateControls->panels;
+	int panelCount = currentStateControls->panelCount;
 	
 	if(panel->isMinimizable)
 	{
@@ -2496,7 +2708,7 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 			}
 			
 			/* Move the panel when titleRect is clicked */
-			if(SGE_isMouseOver(&panel->titleRect) && !SGE_isMouseOver(&panel->minimizeButton->boundBox))
+			if(SGE_isMouseOver(&panel->titleRect))
 			{
 				if(panel->isMovable)
 				{
@@ -2509,6 +2721,14 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 					
 					panel->move_dx = engine->mouse_x - panel->border.x;
 					panel->move_dy = engine->mouse_y - panel->border.y;
+
+					if(panel->isMinimizable)
+					{
+						if(SGE_isMouseOver(&panel->minimizeButton->boundBox))
+						{
+							panel->isMoving = false;
+						}
+					}
 				}
 			}
 			
@@ -2825,9 +3045,9 @@ void SGE_WindowPanelRender(SGE_WindowPanel *panel)
 		{
 			SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, panel->alpha);
 			
-			for(i = panel->index + 1; i < panelCount; i++)
+			for(i = panel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&panels[i]->border))
+				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
 					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, panel->alpha);
 			}
 		}
@@ -2850,9 +3070,9 @@ void SGE_WindowPanelRender(SGE_WindowPanel *panel)
 		{
 			SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, panel->alpha);
 			
-			for(i = panel->index + 1; i < panelCount; i++)
+			for(i = panel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&panels[i]->border))
+				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
 					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, panel->alpha);
 			}
 		}
@@ -2921,13 +3141,22 @@ void SGE_WindowPanelSetPosition(SGE_WindowPanel *panel, int x, int y)
 	
 	panel->horizontalScrollbarBG.x = panel->background.x;
 	panel->horizontalScrollbarBG.y = panel->background.y + panel->background.h - panel->horizontalScrollbarBG.h;
-	panel->horizontalScrollbar.x = panel->horizontalScrollbarBG.x - (panel->x_scroll_offset * (panel->background.w / (double)panel->masterControlRect.w));
 	panel->horizontalScrollbar.y = panel->horizontalScrollbarBG.y;
-	
+
+	/* Calculate horizontal scrollbar position based on scroll offset */
+	int temp_w = panel->masterControlRect.w + (panel->masterControlRect.x - panel->background.x);
+	double scrlBarPos = panel->horizontalScrollbarBG.x - ((panel->x_scroll_offset / temp_w) * panel->horizontalScrollbarBG.w);
+	/* Must round result and cast to int */
+	panel->horizontalScrollbar.x = SDL_ceil(scrlBarPos);
+
 	panel->verticalScrollbarBG.y = panel->background.y;
 	panel->verticalScrollbarBG.x = panel->background.x + panel->background.w - panel->verticalScrollbarBG.w;
-	panel->verticalScrollbar.y = panel->verticalScrollbarBG.y - (panel->y_scroll_offset * (panel->background.h / (double)panel->masterControlRect.h));
 	panel->verticalScrollbar.x = panel->verticalScrollbarBG.x;
+
+	/* Calculate vertical scrollbar posiotion based on scroll offset */
+	int temp_h = panel->masterControlRect.h + (panel->masterControlRect.y - panel->background.y);
+	scrlBarPos = panel->verticalScrollbarBG.y - ((panel->y_scroll_offset / (double)temp_h) * panel->verticalScrollbarBG.h);	
+	panel->verticalScrollbar.y = SDL_ceil(scrlBarPos);
 }
 
 void SGE_WindowPanelSetSize(SGE_WindowPanel *panel, int w, int h)
@@ -2983,9 +3212,9 @@ void SGE_SetActiveWindowPanel(SGE_WindowPanel *panel)
 	int i = 0;
 	
 	/* Sets all but the given panel as active */
-	for(i = 0; i < panelCount; i++)
+	for(i = 0; i < currentStateControls->panelCount; i++)
 	{
-		panels[i]->isActive = false;
+		currentStateControls->panels[i]->isActive = false;
 	}
 	panel->isActive = true;
 	SGE_SendActivePanelToTop();
@@ -2993,12 +3222,16 @@ void SGE_SetActiveWindowPanel(SGE_WindowPanel *panel)
 
 SGE_WindowPanel *SGE_GetActiveWindowPanel()
 {
-	return panels[panelCount - 1];
+	return currentStateControls->panels[currentStateControls->panelCount - 1];
 }
 
 void SGE_SendActivePanelToTop()
 {
 	int i = 0;
+	SGE_WindowPanel *tempPanel = NULL;
+
+	SGE_WindowPanel **panels = currentStateControls->panels;
+	int panelCount = currentStateControls->panelCount;
 	
 	/* Finds the active panel and sends it to the top of the panels stack */
 	for(i = 0; i < panelCount - 1; i++)
@@ -3154,6 +3387,25 @@ void SGE_WindowPanelShouldEnableHorizontalScroll(SGE_WindowPanel *panel)
 	{
 		panel->scroll_dx = (panel->masterControlRect.x + panel->masterControlRect.w) - (panel->background.x + panel->background.w);
 		panel->horizontalScrollbarEnabled = true;
+
+		if(panel->verticalScrollbarEnabled)
+			panel->horizontalScrollbarBG.w = panel->background.w - panel->horizontalScrollbarBG.h;
+		else
+			panel->horizontalScrollbarBG.w = panel->background.w;
+		
+		/* Calculate scrollbar width */
+		int temp_w = panel->masterControlRect.w + (panel->masterControlRect.x - panel->background.x);
+		double scrBarWidth = panel->horizontalScrollbarBG.w - ((panel->scroll_dx / (double)temp_w) * panel->horizontalScrollbarBG.w);
+		panel->horizontalScrollbar.w = SDL_ceil(scrBarWidth);
+
+		/* Calculate scrollbar x position */
+		double scrlBarPos = panel->horizontalScrollbarBG.x - ((panel->x_scroll_offset / temp_w) * panel->horizontalScrollbarBG.w);
+		panel->horizontalScrollbar.x = SDL_ceil(scrlBarPos);
+
+		if((panel->horizontalScrollbar.x + panel->horizontalScrollbar.w) > (panel->horizontalScrollbarBG.x + panel->horizontalScrollbarBG.w))
+		{
+			panel->isScrolling_horizontal = true;
+		}
 	}
 	else
 	{
@@ -3161,15 +3413,6 @@ void SGE_WindowPanelShouldEnableHorizontalScroll(SGE_WindowPanel *panel)
 		panel->horizontalScrollbar.x = panel->horizontalScrollbarBG.x;
 		panel->horizontalScrollbarEnabled = false;
 	}
-	
-	if(panel->verticalScrollbarEnabled)
-		panel->horizontalScrollbarBG.w = panel->background.w - panel->horizontalScrollbarBG.h;
-	else
-		panel->horizontalScrollbarBG.w = panel->background.w;
-	
-	int temp_w = panel->masterControlRect.w + (panel->masterControlRect.x - panel->background.x);
-	panel->horizontalScrollbar.w = panel->horizontalScrollbarBG.w - ((panel->scroll_dx / (double)temp_w) * panel->horizontalScrollbarBG.w);
-	panel->horizontalScrollbar.x = panel->horizontalScrollbarBG.x;
 }
 
 void SGE_WindowPanelShouldEnableVerticalScroll(SGE_WindowPanel *panel)
@@ -3179,6 +3422,25 @@ void SGE_WindowPanelShouldEnableVerticalScroll(SGE_WindowPanel *panel)
 	{
 		panel->scroll_dy = (panel->masterControlRect.y + panel->masterControlRect.h) - (panel->background.y + panel->background.h);
 		panel->verticalScrollbarEnabled = true;
+
+		if(panel->horizontalScrollbarEnabled)
+			panel->verticalScrollbarBG.h = panel->background.h - panel->verticalScrollbarBG.w;
+		else
+			panel->verticalScrollbarBG.h = panel->background.h;
+		
+		/* Calculate vertical scrollbar width */
+		int temp_h = panel->masterControlRect.h + (panel->masterControlRect.y - panel->background.y);
+		double scrBarWidth = panel->verticalScrollbarBG.h - ((panel->scroll_dy / (double)temp_h) * panel->verticalScrollbarBG.h);
+		panel->verticalScrollbar.h = SDL_ceil(scrBarWidth);
+
+		/* Calculate vertical scrollbar y position */
+		double scrlBarPos = panel->verticalScrollbarBG.y - ((panel->y_scroll_offset / temp_h) * panel->verticalScrollbarBG.h);
+		panel->verticalScrollbar.y = SDL_ceil(scrlBarPos);
+
+		if((panel->verticalScrollbar.y + panel->verticalScrollbar.h) > (panel->verticalScrollbarBG.y + panel->verticalScrollbarBG.h))
+		{
+			panel->isScrolling_vertical = true;
+		}
 	}
 	else
 	{
@@ -3186,15 +3448,6 @@ void SGE_WindowPanelShouldEnableVerticalScroll(SGE_WindowPanel *panel)
 		panel->verticalScrollbar.y = panel->verticalScrollbarBG.y;
 		panel->verticalScrollbarEnabled = false;
 	}
-	
-	if(panel->horizontalScrollbarEnabled)
-		panel->verticalScrollbarBG.h = panel->background.h - panel->verticalScrollbarBG.w;
-	else
-		panel->verticalScrollbarBG.h = panel->background.h;
-	
-	int temp_h = panel->masterControlRect.h + (panel->masterControlRect.y - panel->background.y);
-	panel->verticalScrollbar.h = panel->verticalScrollbarBG.h - ((panel->scroll_dy / (double)temp_h) * panel->verticalScrollbarBG.h);
-	panel->verticalScrollbar.y = panel->verticalScrollbarBG.y;
 }
 
 /* Layouting functions for easy GUI Layouting */

@@ -1,11 +1,10 @@
 #include "SGE_AnimatedSprite.h"
 #include "SGE.h"
 #include "SGE_Logger.h"
-#include <SDL_image.h>
+#include <SDL2/SDL_image.h>
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 
 SGE_AnimatedSprite *SGE_CreateAnimatedSprite(const char *path, int nFrames, int fps)
 {
@@ -13,6 +12,7 @@ SGE_AnimatedSprite *SGE_CreateAnimatedSprite(const char *path, int nFrames, int 
 	sprite->frameCount = nFrames;
 	sprite->currentFrame = 0;
 	sprite->fps = fps;
+	sprite->increment = 1;
 	sprite->lastDrawTime = 0;
 	
 	sprite->texture = SGE_LoadTexture(path);
@@ -47,26 +47,18 @@ void SGE_FreeAnimatedSprite(SGE_AnimatedSprite *sprite)
 	{
 		SGE_LogPrintLine(SGE_LOG_WARNING, "Attempt to free NULL AnimatedSprite!");
 	}
-	
 }
 
 void SGE_RenderAnimatedSprite(SGE_AnimatedSprite *sprite)
 {
-	if(sprite != NULL)
+	if(!sprite->paused)
 	{
-		if(!sprite->paused)
+		if(SDL_GetTicks() > sprite->lastDrawTime + 1000/sprite->fps)
 		{
-			if(sprite->fps == 0)
-			{
-				sprite->fps = 1;
-			}
-			if(SGE_GetEngineData()->currentTime > sprite->lastDrawTime + 1000/sprite->fps)
-			{
-				sprite->currentFrame++;
-				sprite->lastDrawTime = SGE_GetEngineData()->currentTime;
-			}
+			sprite->currentFrame += sprite->increment;
+			sprite->lastDrawTime = SDL_GetTicks();
 		}
-		
+	
 		sprite->texture->clipRect.x = sprite->currentFrame * sprite->texture->clipRect.w;
 		if(sprite->currentFrame < 0)
 		{
@@ -78,15 +70,43 @@ void SGE_RenderAnimatedSprite(SGE_AnimatedSprite *sprite)
 			sprite->texture->clipRect.x = 0;
 			sprite->currentFrame = 0;
 		}
-		
-		sprite->texture->x = sprite->x;
-		sprite->texture->y = sprite->y;
-		sprite->texture->w = sprite->w;
-		sprite->texture->h = sprite->h;
-		sprite->texture->rotation = sprite->rotation;
-		sprite->texture->flip = sprite->flip;
-		SGE_RenderTexture(sprite->texture);
 	}
+	
+	sprite->texture->x = sprite->x;
+	sprite->texture->y = sprite->y;
+	sprite->texture->w = sprite->w;
+	sprite->texture->h = sprite->h;
+	sprite->texture->rotation = sprite->rotation;
+	sprite->texture->flip = sprite->flip;
+	SGE_RenderTexture(sprite->texture);
+}
+
+void SGE_RestartAnimatedSprite(SGE_AnimatedSprite *sprite, int frame)
+{
+	sprite->currentFrame = frame - 1;
+	sprite->lastDrawTime = SDL_GetTicks();
+}
+
+void SGE_SetAnimatedSpriteFPS(SGE_AnimatedSprite *sprite, int fps)
+{
+	if(fps == 0)
+	{
+		sprite->paused = true;
+		return;
+	}
+
+	if(fps < 0)
+	{
+		if(sprite->increment > 0)
+		{
+			sprite->increment = -sprite->increment;
+		}
+	}
+	else
+	{
+		sprite->increment = SDL_abs(sprite->increment);
+	}	
+	sprite->fps = SDL_abs(fps);
 }
 
 /*

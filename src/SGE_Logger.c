@@ -8,14 +8,24 @@
 /* The output stream to use for log messages */
 static FILE *logStream = NULL;
 
-/*
-	Parameters:
-	1. const char* filePath
-	The path to a log file, NULL for stdout.
-	
-	Description:
-	Sets the logStream to either be a file, or stdout based on the filePath parameter.
-*/
+/* Log level filter flag that decides what messages are printed */
+static int logFilterFlag =  SGE_LOG_INFO | SGE_LOG_DEBUG | SGE_LOG_WARNING | SGE_LOG_ERROR;
+
+void SGE_LogSetFilter(int flags)
+{
+	logFilterFlag = flags;
+}
+
+/* Tests whether a log message should be ignored based on it's level and the current filter flag. */
+static bool SGE_LogShouldIgnore(SGE_LogLevel level)
+{
+	if(logFilterFlag & level)
+	{
+		return false;
+	}
+	return true;
+}
+
 void SGE_LogSetFile(const char *filePath)
 {
 	time_t currentTime;
@@ -39,61 +49,33 @@ void SGE_LogSetFile(const char *filePath)
 	{
 		currentTime = time(NULL);
 		timeStr = ctime(&currentTime);
-		fprintf(logStream, "\nLOGGER: LOG_BEGIN\nLOGGER: DATE: ");
+		fprintf(logStream, "LOGGER: LOG_BEGIN\nLOGGER: DATE: ");
 		fprintf(logStream, timeStr);
 	}
 }
 
-/*
-	Paramters:
-	None
-	
-	Description:
-	Closes the log file opened with logSetFile().
-	Must be called before exit if the last used stream wasn't stdout.
-	Acts the same as logSetFile(NULL);
-*/
 void SGE_LogCloseFile()
 {
-	// logStream can either be NULL, stdout or a file pointer.
+	/* logStream can either be NULL, stdout or a file pointer. */
 	if(logStream != NULL)
 	{
 		if(logStream != stdout) // logStream is a file.
 		{
-			fprintf(logStream, "LOGGER: LOG_END\n");
+			fprintf(logStream, "LOGGER: LOG_END\n\n");
 			fclose(logStream);
 			logStream = NULL;
 		}
 	}
 }
 
-/*
-	Parameters:
-	1. LogLevel level
-	The log level of the message string to print.
-	2. const char *format 
-	The format string message to print similar to printf().
-	3. ...
-	Comma seperated args based on the specified format string.
-	
-	Description:
-	Prints a formatted string to the output stream along with
-	a preceding string that specifies the log level of the message.
-	Essentially a wrapper around fprintf().
-*/
-void SGE_LogPrintLine(SGE_LogLevel level, const char *format, ...)
+static void SGE_LogPrintTags(SGE_LogLevel level)
 {
-	va_list args;
-	va_start(args, format);
-	
-	// If logInit() hasn't been called, set logStream to stdout
-	if(logStream == NULL)
-	{
-		logStream = stdout;
-	}
-	
 	switch(level)
 	{
+		case SGE_LOG_INFO:
+		fprintf(logStream, "[ INFO ] ");
+		break;
+
 		case SGE_LOG_DEBUG:
 		fprintf(logStream, "[ DEBUG ] ");
 		break;
@@ -107,13 +89,33 @@ void SGE_LogPrintLine(SGE_LogLevel level, const char *format, ...)
 		break;
 		
 		default:
-		fprintf(logStream, "LOGGER: Invalid log level passed!\n[INVALID]: ");
+		fprintf(logStream, "[LOGGER]: Invalid log level passed!\n[INVALID] ");
 		break;
 	}
 	
 	fprintf(logStream, "[");
 	fprintf(logStream, SGE_GetCurrentState()->name);
 	fprintf(logStream, "]: ");
+}
+
+void SGE_LogPrintLine(SGE_LogLevel level, const char *format, ...)
+{
+	/* Filter message */
+	if(SGE_LogShouldIgnore(level))
+	{
+		return;
+	}
+
+	va_list args;
+	va_start(args, format);
+	
+	// If logInit() hasn't been called, set logStream to stdout
+	if(logStream == NULL)
+	{
+		logStream = stdout;
+	}
+	
+	SGE_LogPrintTags(level);
 	
 	vfprintf(logStream, format, args);
 	fprintf(logStream, "\n");
@@ -122,6 +124,11 @@ void SGE_LogPrintLine(SGE_LogLevel level, const char *format, ...)
 
 void SGE_LogPrint(SGE_LogLevel level, const char *format, ...)
 {
+	if(SGE_LogShouldIgnore(level))
+	{
+		return;
+	}
+
 	va_list args;
 	va_start(args, format);
 	
@@ -131,28 +138,7 @@ void SGE_LogPrint(SGE_LogLevel level, const char *format, ...)
 		logStream = stdout;
 	}
 	
-	switch(level)
-	{
-		case SGE_LOG_DEBUG:
-		fprintf(logStream, "[ DEBUG ] ");
-		break;
-		
-		case SGE_LOG_ERROR:
-		fprintf(logStream, "[ ERROR ] ");
-		break;
-		
-		case SGE_LOG_WARNING:
-		fprintf(logStream, "[WARNING] ");
-		break;
-		
-		default:
-		fprintf(logStream, "LOGGER: Invalid log level passed!\n[INVALID]: ");
-		break;
-	}
-	
-	fprintf(logStream, "[");
-	fprintf(logStream, SGE_GetCurrentState()->name);
-	fprintf(logStream, "]: ");
+	SGE_LogPrintTags(level);
 	
 	vfprintf(logStream, format, args);
 	va_end(args);
@@ -160,6 +146,11 @@ void SGE_LogPrint(SGE_LogLevel level, const char *format, ...)
 
 void SGE_LogPrintLineCat(SGE_LogLevel level, const char *catString, const char *format, va_list *args)
 {
+	if(SGE_LogShouldIgnore(level))
+	{
+		return;
+	}
+
 	va_list args2;
 	va_copy(args2, *args);
 	
@@ -169,28 +160,7 @@ void SGE_LogPrintLineCat(SGE_LogLevel level, const char *catString, const char *
 		logStream = stdout;
 	}
 	
-	switch(level)
-	{
-		case SGE_LOG_DEBUG:
-		fprintf(logStream, "[ DEBUG ] ");
-		break;
-		
-		case SGE_LOG_ERROR:
-		fprintf(logStream, "[ ERROR ] ");
-		break;
-		
-		case SGE_LOG_WARNING:
-		fprintf(logStream, "[WARNING] ");
-		break;
-		
-		default:
-		fprintf(logStream, "LOGGER: Invalid log level passed!\n[INVALID]: ");
-		break;
-	}
-	
-	fprintf(logStream, "[");
-	fprintf(logStream, SGE_GetCurrentState()->name);
-	fprintf(logStream, "]: ");
+	SGE_LogPrintTags(level);
 	
 	fprintf(logStream, catString);
 	
@@ -199,8 +169,13 @@ void SGE_LogPrintLineCat(SGE_LogLevel level, const char *catString, const char *
 	va_end(args2);
 }
 
-void SGE_printf(const char *format, ...)
+void SGE_printf(SGE_LogLevel level, const char *format, ...)
 {
+	if(SGE_LogShouldIgnore(level))
+	{
+		return;
+	}
+
 	va_list args;
 	va_start(args, format);
 	vfprintf(logStream, format, args);

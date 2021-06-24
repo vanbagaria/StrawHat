@@ -4,13 +4,43 @@
 #include "SGE_Texture.h"
 #include <stdbool.h>
 
-typedef struct SGE_WindowPanel SGE_WindowPanel;
-typedef struct SGE_Button SGE_Button;
-typedef struct SGE_CheckBox SGE_CheckBox;
-typedef struct SGE_TextLabel SGE_TextLabel;
-typedef struct SGE_Slider SGE_Slider;
-typedef struct SGE_TextInputBox SGE_TextInputBox;
-typedef struct SGE_ListBox SGE_ListBox;
+typedef struct SGE_WindowPanel    SGE_WindowPanel;
+typedef struct SGE_Button         SGE_Button;
+typedef struct SGE_CheckBox       SGE_CheckBox;
+typedef struct SGE_TextLabel      SGE_TextLabel;
+typedef struct SGE_Slider         SGE_Slider;
+typedef struct SGE_TextInputBox   SGE_TextInputBox;
+typedef struct SGE_ListBox        SGE_ListBox;
+
+#define STATE_MAX_BUTTONS          50
+#define STATE_MAX_CHECKBOXES       50
+#define STATE_MAX_LABELS           50
+#define STATE_MAX_SLIDERS          50
+#define STATE_MAX_TEXT_INPUT_BOXES 50
+#define STATE_MAX_LISTBOXES        50
+#define STATE_MAX_PANELS           50
+
+/* A list of GUI controls that is held by each state in SGE */
+typedef struct SGE_GUI_ControlList
+{
+	/* Panel Stack */
+	SGE_WindowPanel *panels[STATE_MAX_PANELS];
+	int panelCount;
+
+	/* Parentless Controls */
+	SGE_Button *buttons[STATE_MAX_BUTTONS];
+	int buttonCount;
+	SGE_CheckBox *checkBoxes[STATE_MAX_CHECKBOXES];
+	int checkBoxCount;
+	SGE_TextLabel *labels[STATE_MAX_LABELS];
+	int labelCount;
+	SGE_Slider *sliders[STATE_MAX_SLIDERS];
+	int sliderCount;
+	SGE_TextInputBox *textInputBoxes[STATE_MAX_TEXT_INPUT_BOXES];
+	int textInputBoxCount;
+	SGE_ListBox *listBoxes[STATE_MAX_LISTBOXES];
+	int listBoxCount;
+} SGE_GUI_ControlList;
 
 typedef enum
 {
@@ -80,11 +110,13 @@ typedef struct SGE_TextLabel
 	Uint8 alpha;
 	
 	char text[200];
+	TTF_Font *font;
 	SDL_Color fgColor;
 	SDL_Color bgColor;
 	bool showBG;
 	SGE_Texture *textImg;
 	SGE_TextRenderMode mode;
+	bool isVisible;
 } SGE_TextLabel;
 
 typedef struct SGE_Slider
@@ -232,7 +264,7 @@ typedef struct SGE_WindowPanel
 	bool isScrolling_horizontal;
 	int horizontalScrollbar_move_dx;
 	int scroll_dx;
-	int x_scroll_offset;
+	double x_scroll_offset;
 	
 	bool verticalScrollbarEnabled;
 	SDL_Rect verticalScrollbarBG;
@@ -240,7 +272,7 @@ typedef struct SGE_WindowPanel
 	bool isScrolling_vertical;
 	int verticalScrollbar_move_dy;
 	int scroll_dy;
-	int y_scroll_offset;
+	double y_scroll_offset;
 	
 	void (*onMove)(void *data);
 	void *onMove_data;
@@ -272,6 +304,9 @@ void SGE_GUI_HandleEvents();
 void SGE_GUI_Update();
 void SGE_GUI_Render();
 
+void SGE_GUI_UpdateCurrentState(const char *nextState);
+void SGE_GUI_FreeState(const char *state);
+
 SGE_Button *SGE_CreateButton(const char *text, int x, int y, struct SGE_WindowPanel *panel);
 void SGE_DestroyButton(SGE_Button *button);
 void SGE_ButtonHandleEvents(SGE_Button *button);
@@ -287,6 +322,7 @@ void SGE_CheckBoxRender(SGE_CheckBox *checkBox);
 void SGE_CheckBoxSetPosition(SGE_CheckBox *checkBox, int x, int y);
 
 SGE_TextLabel *SGE_CreateTextLabel(const char *text, int x, int y, SDL_Color color, struct SGE_WindowPanel *panel);
+SGE_TextLabel *SGE_CreateTextLabelCustom(const char *text, int x, int y, SDL_Color color, TTF_Font *font, struct SGE_WindowPanel *panel);
 void SGE_DestroyTextLabel(SGE_TextLabel *label);
 void SGE_TextLabelRender(SGE_TextLabel *label);
 void SGE_TextLabelSetPosition(SGE_TextLabel *label, int x, int y);
@@ -294,6 +330,8 @@ void SGE_TextLabelSetText(SGE_TextLabel *label, const char *text);
 void SGE_TextLabelSetFGColor(SGE_TextLabel *label, SDL_Color fg);
 void SGE_TextLabelSetBGColor(SGE_TextLabel *label, SDL_Color bg);
 void SGE_TextLabelSetMode(SGE_TextLabel *label, SGE_TextRenderMode mode);
+void SGE_TextLabelSetAlpha(SGE_TextLabel *label, Uint8 alpha);
+void SGE_TextLabelSetVisible(SGE_TextLabel *label, bool visible);
 
 SGE_Slider *SGE_CreateSlider(int x, int y, struct SGE_WindowPanel *panel);
 void SGE_DestroySlider(SGE_Slider *slider);

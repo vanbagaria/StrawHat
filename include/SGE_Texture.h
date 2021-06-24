@@ -1,8 +1,8 @@
 #ifndef __SGE_TEXTURE__
 #define __SGE_TEXTURE__
 
-#include <SDL.h>
-#include <SDL_ttf.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 typedef struct
 {

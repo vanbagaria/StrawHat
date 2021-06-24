@@ -41,7 +41,7 @@ gcc SGE_Demo.c SGE/src/*.c -o SGE_Demo -ISGE/include -lSDL2main -lSDL2 -lSDL2_im
 ```
 
 A blue window should appear, along with a console window with a lot of debug information.
-For more examples, checkout the [demos](demos) and read the [manual](SGE_Manual.pdf).
+For more examples, checkout the [demos](demos) and read the [manual](https://drive.google.com/file/d/17F2VKthwgbvBpEL6PzgpCmCxaauE8VWZ/view?usp=sharing).
 
 ## Dependencies
 * [SDL2](https://www.libsdl.org/)

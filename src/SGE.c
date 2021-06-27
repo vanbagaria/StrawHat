@@ -204,7 +204,7 @@ void SGE_Run(const char *startStateName)
 		currentState.update();
 		
 		/* Rendering */
-		SGE_ClearScreenColor(engine.defaultScreenClearColor);
+		SGE_ClearScreen(engine.defaultScreenClearColor);
 		currentState.render();
 		SGE_GUI_Render();
 		SDL_RenderPresent(engine.renderer);
@@ -357,16 +357,21 @@ void SGE_SetBackgroundColor(SDL_Color color)
 	engine.defaultScreenClearColor = color;
 }
 
-void SGE_ClearScreen(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+void SGE_ClearScreenRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
 	SDL_SetRenderDrawColor(engine.renderer, r, g, b, a);
 	SDL_RenderClear(engine.renderer);
 }
 
-void SGE_ClearScreenColor(SDL_Color color)
+void SGE_ClearScreen(SDL_Color color)
 {
 	SDL_SetRenderDrawColor(engine.renderer, color.r, color.g, color.b, color.a);
 	SDL_RenderClear(engine.renderer);
+}
+
+void SGE_SetDrawColorRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+{
+	SDL_SetRenderDrawColor(engine.renderer, r, g, b, a);
 }
 
 void SGE_SetDrawColor(SDL_Color color)

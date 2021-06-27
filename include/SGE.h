@@ -63,8 +63,9 @@ void SGE_ToggleVsync();
 void SGE_SetTargetFPS(int fps);
 
 void SGE_SetBackgroundColor(SDL_Color color);
-void SGE_ClearScreen(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-void SGE_ClearScreenColor(SDL_Color color);
+void SGE_ClearScreenRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+void SGE_ClearScreen(SDL_Color color);
+void SGE_SetDrawColorRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 void SGE_SetDrawColor(SDL_Color color);
 void SGE_DrawRect(SDL_Rect *rect);
 void SGE_DrawFillRect(SDL_Rect *rect);

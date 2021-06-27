@@ -53,15 +53,23 @@ typedef struct
 
 SGE_EngineData *SGE_GetEngineData();
 SGE_GameState *SGE_GetCurrentState();
+
 SGE_EngineData *SGE_Init(const char *title, int screenWidth, int screenHeight);
 void SGE_Run(const char *startStateName);
 void SGE_Quit();
+
 void SGE_ToggleFullscreen();
 void SGE_ToggleVsync();
 void SGE_SetTargetFPS(int fps);
+
 void SGE_SetBackgroundColor(SDL_Color color);
 void SGE_ClearScreen(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 void SGE_ClearScreenColor(SDL_Color color);
+void SGE_SetDrawColor(SDL_Color color);
+void SGE_DrawRect(SDL_Rect *rect);
+void SGE_DrawFillRect(SDL_Rect *rect);
+void SGE_DrawLine(int x1, int y1, int x2, int y2);
+
 bool SGE_CheckRectsCollision(const SDL_Rect *r1, const SDL_Rect *r2);
 bool SGE_isMouseOver(SDL_Rect *rect);
 

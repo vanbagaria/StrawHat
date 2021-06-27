@@ -350,6 +350,8 @@ void SGE_SetTargetFPS(int fps)
 	}
 }
 
+/* Rendering Functions */
+
 void SGE_SetBackgroundColor(SDL_Color color)
 {
 	engine.defaultScreenClearColor = color;
@@ -365,6 +367,26 @@ void SGE_ClearScreenColor(SDL_Color color)
 {
 	SDL_SetRenderDrawColor(engine.renderer, color.r, color.g, color.b, color.a);
 	SDL_RenderClear(engine.renderer);
+}
+
+void SGE_SetDrawColor(SDL_Color color)
+{
+	SDL_SetRenderDrawColor(engine.renderer, color.r, color.g, color.b, color.a);
+}
+
+void SGE_DrawRect(SDL_Rect *rect)
+{
+	SDL_RenderDrawRect(engine.renderer, rect);
+}
+
+void SGE_DrawFillRect(SDL_Rect *rect)
+{
+	SDL_RenderFillRect(engine.renderer, rect);
+}
+
+void SGE_DrawLine(int x1, int y1, int x2, int y2)
+{
+	SDL_RenderDrawLine(engine.renderer, x1, y1, x2, y2);
 }
 
 /*

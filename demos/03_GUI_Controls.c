@@ -2,7 +2,6 @@
 #include "SGE_GUI.h"
 
 SGE_EngineData *SGE = NULL;
-SGE_GameState level;
 
 SGE_Button    *button   = NULL;
 SGE_CheckBox  *checkBox = NULL;
@@ -11,7 +10,7 @@ SGE_Slider    *slider   = NULL;
 
 bool LevelInit()
 {
-	SGE->defaultScreenClearColor = SGE_COLOR_GRAY;
+	SGE_SetBackgroundColor(SGE_COLOR_GRAY);
 	SGE_SetTargetFPS(60);
 	
 	button   = SGE_CreateButton("Button", 0, 0, NULL);
@@ -30,7 +29,7 @@ bool LevelInit()
 int main(int argc, char **argv)
 {
 	SGE = SGE_Init("SGE Controls Demo", 640, 480);
-	SGE_SetStateFunctions(&level, "Level", LevelInit, NULL, NULL, NULL, NULL);
-	SGE_Run(&level);
+	SGE_AddState("Level", LevelInit, NULL, NULL, NULL, NULL);
+	SGE_Run("Level");
 	return 0;
 }

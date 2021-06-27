@@ -3,7 +3,6 @@
 #include <stdio.h>
 
 SGE_EngineData *SGE = NULL;
-SGE_GameState level;
 
 /* A panel with a button */
 SGE_WindowPanel *buttonPanel = NULL;
@@ -42,10 +41,17 @@ void toggleAlpha(void *panel)
 	}
 }
 
+void onSlideUpdateAlpha()
+{
+	sliderPanel->alpha = slider->value * 255;
+	sprintf(sliderValueStr, "%.2f", slider->value);
+	SGE_TextLabelSetText(sliderValueLabel, sliderValueStr);
+}
+
 bool LevelInit()
 {
-	SGE->defaultScreenClearColor = SGE_COLOR_GRAY;
-	SGE_SetTargetFPS(120);
+	SGE_SetBackgroundColor(SGE_COLOR_GRAY);
+	SGE_SetTargetFPS(60);
 	
 	/* Set up panels and their controls */
 	buttonPanel = SGE_CreateWindowPanel("Button", 100, 200, 320, 240);
@@ -55,7 +61,7 @@ bool LevelInit()
 	
 	checkBoxPanel = SGE_CreateWindowPanel("Checkbox", 500, 200, 320, 240);
 	checkBoxLabel = SGE_CreateTextLabel("Ghost me?: ", 90, 100, SGE_COLOR_WHITE, checkBoxPanel);
-	checkBox = SGE_CreateCheckBox(checkBoxLabel->x + checkBoxLabel->textImg->w, checkBoxLabel->y, checkBoxPanel);
+	checkBox = SGE_CreateCheckBox(checkBoxLabel->x + checkBoxLabel->boundBox.w, checkBoxLabel->y, checkBoxPanel);
 	checkBox->onMouseUp = toggleAlpha;
 	checkBox->onMouseUp_data = checkBoxPanel;
 	
@@ -65,6 +71,7 @@ bool LevelInit()
 	sprintf(sliderValueStr, "%.2f", slider->value);
 	sliderValueLabel = SGE_CreateTextLabel(sliderValueStr, 50, 90, SGE_COLOR_WHITE, sliderPanel);
 	SGE_TextLabelSetMode(sliderValueLabel, SGE_TEXT_MODE_SHADED);
+	slider->onSlide = onSlideUpdateAlpha;
 	
 	SGE_SetActiveWindowPanel(buttonPanel);
 
@@ -93,20 +100,14 @@ void LevelUpdate()
 	sprintf(windowInfoStr, "Top Panel: {%s} X: %d, Y: %d", SGE_GetActiveWindowPanel()->titleStr, SGE_GetActiveWindowPanel()->border.x, SGE_GetActiveWindowPanel()->border.y);
 	SGE_TextLabelSetText(windowInfoLabel, windowInfoStr);
 	
-	sprintf(sliderValueStr, "%.2f", slider->value);
-	SGE_TextLabelSetText(sliderValueLabel, sliderValueStr);
-	
 	SGE_TextLabelSetText(panelsListLabel, SGE_GetPanelListAsStr());
-	
-	/* Update panel alpha using slider value */
-	sliderPanel->alpha = slider->value * 255;
 }
 
 int main(int argc, char **argv)
 {
 	SGE = SGE_Init("SGE GUI Demo", 1280, 720);
-	SGE_SetStateFunctions(&level, "Level", LevelInit, NULL, NULL, LevelUpdate, NULL);
-	SGE_Run(&level);
+	SGE_AddState("Level", LevelInit, NULL, NULL, LevelUpdate, NULL);
+	SGE_Run("Level");
 	return 0;
 }
 

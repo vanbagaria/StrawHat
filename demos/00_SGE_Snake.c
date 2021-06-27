@@ -59,7 +59,6 @@ void LevelRender();
 
 /* SGE Data and level state data*/
 SGE_EngineData *SGE = NULL;
-SGE_GameState level;
 
 /* The snek */
 Snake snake;
@@ -70,10 +69,11 @@ SDL_Color foodColor;
 
 SDL_Color screenColor;
 int score = 0;
+
+SGE_Timer updateTimer;
 int levelUpdateSpeed = LEVEL_UPDATE_SPEED_MS;
 int lastTime = 0;
 
-bool debugMode = false;
 char debugInfoStr[50];
 SGE_Texture *debugInfoImage = NULL;
 
@@ -83,6 +83,7 @@ SGE_Texture *scoreInfoImage = NULL;
 char helpInfoStr[150];
 SGE_Texture *helpInfoImage = NULL;
 
+bool debugMode = false;
 bool paused = false;
 bool showMouse = false;
 
@@ -99,8 +100,8 @@ int main(int argc, char **argv)
 	SGE = SGE_Init("SGE Snake", 1280, 720);
 	SGE_SetTargetFPS(120);
 	
-	SGE_SetStateFunctions(&level, "Level", LevelInit, LevelQuit, LevelHandleEvents, LevelUpdate, LevelRender);
-	SGE_Run(&level);
+	SGE_AddState("Level", LevelInit, LevelQuit, LevelHandleEvents, LevelUpdate, LevelRender);
+	SGE_Run("Level");
 	return 0;
 }
 
@@ -130,9 +131,10 @@ bool LevelInit()
 	snakeInit(&snake);
 	screenColor = SGE_COLOR_GRAY;
 	score = 0;
+
 	/* Create Score Information Texture */
 	sprintf(scoreInfoStr, "Score: %d", score);
-	scoreInfoImage = SGE_CreateTextureFromText(scoreInfoStr, SGE->defaultFont, SGE_COLOR_WHITE, SGE_TEXT_MODE_SOLID);
+	scoreInfoImage = SGE_CreateTextureFromText(scoreInfoStr, SGE->defaultFont, SGE_COLOR_WHITE, SGE_TEXT_MODE_BLENDED);
 	scoreInfoImage->x = 20;
 	scoreInfoImage->y = 20;
 	
@@ -186,6 +188,9 @@ bool LevelInit()
 	backButton = SGE_CreateButton("Back", showMouseLabel->x , showMouseLabel->y + showMouseLabel->boundBox.h + 25, pauseWindow);
 	backButton->onMouseUp = togglePaused;
 	backButton->normalColor = SGE_COLOR_GRAY;
+
+	lastTime = 0;
+	SGE_StartTimer(&updateTimer);
 	
 	return true;
 }
@@ -238,7 +243,7 @@ void LevelHandleEvents()
 			/* Reset by reloading everything when the 'R' key is pressed */
 			if(SGE->event.key.keysym.sym == SDLK_r)
 			{
-				SGE_SwitchToState(&level);
+				SGE_SwitchToState("Level", true);
 			}
 			
 			/* Change screen background to a random color when the 'B' key is pressed*/
@@ -321,11 +326,11 @@ void LevelUpdate()
 	if(!paused)
 	{
 		/* Delay the Level update based on the levelUpdateSpeed variable */
-		if(SGE->currentTime > lastTime + levelUpdateSpeed)
+		if(SGE_GetTimerTime(&updateTimer) > lastTime + levelUpdateSpeed)
 		{
 			snakeUpdate(&snake);
 			/* For update delay */
-			lastTime = SGE->currentTime;
+			lastTime = SGE_GetTimerTime(&updateTimer);
 		}
 		
 		/* If Snake ate the food, spawn it elsewhere at random with a different color and increase the score */
@@ -340,31 +345,31 @@ void LevelUpdate()
 			
 			score++;
 			snakeAddNode(&snake);
+
+			/* Update score information texture */
+			sprintf(scoreInfoStr, "Score: %d", score);
+			SGE_UpdateTextureFromText(scoreInfoImage, scoreInfoStr, SGE->defaultFont, SGE_COLOR_WHITE, SGE_TEXT_MODE_BLENDED);
 		}
-		
-		/* Information Texture Updates */
-		sprintf(scoreInfoStr, "Score: %d", score);
-		SGE_UpdateTextureFromText(scoreInfoImage, scoreInfoStr, SGE->defaultFont, SGE_COLOR_WHITE, SGE_TEXT_MODE_SOLID);
 		
 		if(debugMode)
 		{
 			sprintf(debugInfoStr, "X: %d, Y:%d, Nodes: %d, Turns: %d", snake.nodes[0].rect.x, snake.nodes[0].rect.y, snake.nodeCount, snake.turnCount);
-			SGE_UpdateTextureFromText(debugInfoImage, debugInfoStr, SGE->defaultFont, SGE_COLOR_GREEN, SGE_TEXT_MODE_SOLID);			
+			SGE_UpdateTextureFromText(debugInfoImage, debugInfoStr, SGE->defaultFont, SGE_COLOR_GREEN, SGE_TEXT_MODE_SOLID);
 		}
 	}
 }
 
 void LevelRender()
 {
-	SGE_ClearScreenColor(screenColor);
+	SGE_ClearScreen(screenColor);
 	
 	snakeRender(&snake);
 	
 	/* Render the food using two rects, a colored filled rect and a white non-filled rect */
-	SDL_SetRenderDrawColor(SGE->renderer, foodColor.r, foodColor.g, foodColor.b, foodColor.a);
-	SDL_RenderFillRect(SGE->renderer, &food);
-	SDL_SetRenderDrawColor(SGE->renderer, 255, 255, 255, 255);
-	SDL_RenderDrawRect(SGE->renderer, &food);
+	SGE_SetDrawColor(foodColor);
+	SGE_DrawFillRect(&food);
+	SGE_SetDrawColor(SGE_COLOR_WHITE);
+	SGE_DrawRect(&food);
 	
 	/* Render Information Textures */
 	SGE_RenderTexture(helpInfoImage);
@@ -519,7 +524,7 @@ void snakeUpdate(Snake *snake)
 		if(snake->nodes[0].rect.x == snake->nodes[i].rect.x)
 		{
 			if(snake->nodes[0].rect.y == snake->nodes[i].rect.y)
-				SGE_SwitchToState(&level);
+				SGE_SwitchToState("Level", true);
 		}
 	}
 	
@@ -593,26 +598,26 @@ void snakeRender(Snake *snake)
 		/* Draws the striped pattern */
 		if(i % 2 == 0)
 		{
-			SDL_SetRenderDrawColor(SGE_GetEngineData()->renderer,  snake->color.r / 2, snake->color.g / 2, snake->color.b / 2, snake->color.a / 2);
+			SGE_SetDrawColorRGBA(snake->color.r / 2, snake->color.g / 2, snake->color.b / 2, snake->color.a / 2);
 		}
 		else
 		{
-			SDL_SetRenderDrawColor(SGE_GetEngineData()->renderer,  snake->color.r, snake->color.g, snake->color.b, snake->color.a);
+			SGE_SetDrawColor(snake->color);
 		}
-		SDL_RenderFillRect(SGE_GetEngineData()->renderer, &snake->nodes[i].rect);
+		SGE_DrawFillRect(&snake->nodes[i].rect);
 	}
 	
 	/* Draws a white non-filled rect at the head's position */
-	SDL_SetRenderDrawColor(SGE->renderer, 255, 255, 255, 255);
-	SDL_RenderDrawRect(SGE->renderer, &snake->nodes[0].rect);
+	SGE_SetDrawColor(SGE_COLOR_WHITE);
+	SGE_DrawRect(&snake->nodes[0].rect);
 	
 	/* Only draw the turn points if debug mode is enabled */
 	if(debugMode)
 	{
 		for(i = 0; i < snake->turnCount; i++)
 		{
-			SDL_SetRenderDrawColor(SGE_GetEngineData()->renderer, 0, 255, 0, 255);
-			SDL_RenderDrawRect(SGE_GetEngineData()->renderer, &snake->turns[i].rect);
+			SGE_SetDrawColor(SGE_COLOR_GREEN);
+			SGE_DrawRect(&snake->turns[i].rect);
 		}
 	}
 }

@@ -155,12 +155,19 @@ typedef struct SGE_TextInputBox
 	char *text;
 	int textLengthLimit;
 	SDL_Rect inputBox;
-	SDL_Rect cursor;
 	bool isEnabled;
-	SGE_Texture *textImg;
 	
+	SDL_Rect cursor;
+	int cursor_dx;
+	int cursor_dy;
 	int lastTime;
 	bool showCursor;
+
+	SGE_Texture *textImg;
+	int lastTextWidth;
+	int currentCharWidth;
+	// TODO: Create a stack of character widths for cursor to follow on text delete.
+	// LikedList *characterWidthStack;
 	
 	void (*onEnable)(void *data);
 	void *onEnable_data;

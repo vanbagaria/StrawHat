@@ -1874,7 +1874,13 @@ SGE_TextInputBox *SGE_CreateTextInputBox(int maxTextLength, int x, int y, struct
 	textInputBox->cursor.y = textInputBox->textImg->y + 20;
 	textInputBox->cursor.w = 10;
 	textInputBox->cursor.h = 5;
-	
+	textInputBox->cursor_dx = 0;
+	textInputBox->cursor_dy = 0;
+	textInputBox->lastTextWidth = textInputBox->textImg->w;
+	textInputBox->currentCharWidth = textInputBox->textImg->w;
+	// TODO:
+	// textInputBox->characterWidthStack = Stack();
+
 	textInputBox->showCursor = false;
 	textInputBox->lastTime = 0;
 	
@@ -1911,35 +1917,7 @@ void SGE_DestroyTextInputBox(SGE_TextInputBox *textInputBox)
 
 void SGE_TextInputBoxHandleEvents(SGE_TextInputBox *textInputBox)
 {
-	switch(engine->event.type)
-	{
-		case SDL_TEXTINPUT:
-		if(strlen(textInputBox->text) < textInputBox->textLengthLimit)
-		{
-			strcat(textInputBox->text, engine->event.text.text);
-			SGE_UpdateTextureFromText(textInputBox->textImg, textInputBox->text, textBoxFont, SGE_COLOR_BLACK, SGE_TEXT_MODE_BLENDED);
-			textInputBox->onTextEnter(textInputBox->onTextEnter_data);
-		}
-		else
-			SGE_LogPrintLine(SGE_LOG_WARNING, "Max characters for textInputBox [%d] reached!", textInputBox->textLengthLimit);
-		break;
-		
-		case SDL_KEYDOWN:
-		if(engine->event.key.keysym.sym == SDLK_BACKSPACE)
-		{
-			int i = strlen(textInputBox->text);
-			textInputBox->text[i - 1] = '\0';
-			
-			if(i <= 1)
-				SGE_UpdateTextureFromText(textInputBox->textImg, " ", textBoxFont, SGE_COLOR_BLACK, SGE_TEXT_MODE_BLENDED);
-			else
-				SGE_UpdateTextureFromText(textInputBox->textImg, textInputBox->text, textBoxFont, SGE_COLOR_BLACK, SGE_TEXT_MODE_BLENDED);
-			
-			textInputBox->onTextDelete(textInputBox->onTextDelete_data);
-		}
-		break;
-	}
-	
+	/* Enable or disable text input with mouse */
 	if(engine->event.type == SDL_MOUSEBUTTONDOWN)
 	{
 		if(SGE_isMouseOver(&textInputBox->inputBox))
@@ -1976,6 +1954,55 @@ void SGE_TextInputBoxHandleEvents(SGE_TextInputBox *textInputBox)
 			}
 		}
 	}
+
+	/* Handle text input events */
+	if(!textInputBox->isEnabled)
+		return;
+	
+	switch(engine->event.type)
+	{
+		case SDL_TEXTINPUT:
+		if(strlen(textInputBox->text) < textInputBox->textLengthLimit - 1)
+		{
+			strcat(textInputBox->text, engine->event.text.text);
+			SGE_UpdateTextureFromText(textInputBox->textImg, textInputBox->text, textBoxFont, SGE_COLOR_BLACK, SGE_TEXT_MODE_BLENDED);
+			textInputBox->onTextEnter(textInputBox->onTextEnter_data);
+
+			textInputBox->cursor_dx += textInputBox->currentCharWidth;
+			textInputBox->currentCharWidth = textInputBox->textImg->w - textInputBox->lastTextWidth;
+			// TODO: Push currentCharWidth to character width stack
+			// Push(characterWidthStack, currentCharWidth);
+			textInputBox->lastTextWidth = textInputBox->textImg->w;
+		}
+		else
+			SGE_LogPrintLine(SGE_LOG_WARNING, "Max characters for textInputBox [%d] reached!", textInputBox->textLengthLimit);
+		break;
+		
+		case SDL_KEYDOWN:
+		if(engine->event.key.keysym.sym == SDLK_BACKSPACE)
+		{
+			int i = strlen(textInputBox->text);
+			if(i == 0) {
+				return;
+			}
+			
+			textInputBox->text[i - 1] = '\0';
+			
+			if(i == 1)
+				SGE_UpdateTextureFromText(textInputBox->textImg, " ", textBoxFont, SGE_COLOR_BLACK, SGE_TEXT_MODE_BLENDED);
+			else
+				SGE_UpdateTextureFromText(textInputBox->textImg, textInputBox->text, textBoxFont, SGE_COLOR_BLACK, SGE_TEXT_MODE_BLENDED);
+			
+			textInputBox->onTextDelete(textInputBox->onTextDelete_data);
+
+			textInputBox->cursor_dx -= textInputBox->currentCharWidth;
+			// TODO: Pop currentCharWidth from character width stack
+			// Pop(characterWidthStack);
+			// textInputBox->currentCharWidth = Top(characterWidthStack);
+			textInputBox->lastTextWidth = textInputBox->textImg->w;
+		}
+		break;
+	}
 }
 
 void SGE_TextInputBoxUpdate(SGE_TextInputBox *textInputBox)
@@ -1988,8 +2015,8 @@ void SGE_TextInputBoxUpdate(SGE_TextInputBox *textInputBox)
 		textInputBox->inputBox.y = textInputBox->boundBox.y;
 		textInputBox->textImg->x = textInputBox->inputBox.x + 5;
 		textInputBox->textImg->y = textInputBox->inputBox.y + 5;
-		textInputBox->cursor.x = textInputBox->textImg->x;
-		textInputBox->cursor.y = textInputBox->textImg->y + 20;
+		textInputBox->cursor.x = textInputBox->textImg->x + textInputBox->cursor_dx;
+		textInputBox->cursor.y = textInputBox->textImg->y + 20 + textInputBox->cursor_dy;
 		
 		textInputBox->alpha = textInputBox->parentPanel->alpha;
 		SGE_SetTextureAlpha(textInputBox->textImg, textInputBox->alpha);
@@ -2049,6 +2076,7 @@ void SGE_TextInputBoxRender(SGE_TextInputBox *textInputBox)
 	if(showControlBounds)
 	{
 		SDL_SetRenderDrawColor(engine->renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, textInputBox->alpha);
+		SDL_RenderDrawRect(engine->renderer, &textInputBox->textImg->destRect);
 		SDL_RenderDrawRect(engine->renderer, &textInputBox->boundBox);
 	}
 }

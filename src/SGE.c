@@ -105,6 +105,8 @@ SGE_EngineData *SGE_Init(const char *title, int screenWidth, int screenHeight)
 	engine.defaultScreenClearColor.b = 255;
 	engine.defaultScreenClearColor.a = 255;
 
+	engine.keyboardState = SDL_GetKeyboardState(NULL);
+
 	SDL_VERSION(&engine.SDL_Version_C);
 	SDL_GetVersion(&engine.SDL_Version_DLL);
 	
@@ -178,7 +180,7 @@ void SGE_Run(const char *startStateName)
 	
 	SGE_GUI_UpdateCurrentState(currentState.name);
 	SGE_InitState(&currentState);
-	
+
 	while(engine.isRunning)
 	{
 		/* Calculate Delta time */
@@ -190,7 +192,6 @@ void SGE_Run(const char *startStateName)
 		SDL_GetMouseState(&engine.mouse_x, &engine.mouse_y);
 		while(SDL_PollEvent(&engine.event) != 0)
 		{
-			engine.keyboardState = SDL_GetKeyboardState(NULL);
 			if(engine.event.type == SDL_QUIT)
 			{
 				engine.isRunning = false;

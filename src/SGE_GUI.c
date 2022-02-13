@@ -1876,10 +1876,9 @@ SGE_TextInputBox *SGE_CreateTextInputBox(int maxTextLength, int x, int y, struct
 	textInputBox->cursor.h = 5;
 	textInputBox->cursor_dx = 0;
 	textInputBox->cursor_dy = 0;
-	textInputBox->lastTextWidth = textInputBox->textImg->w;
+	textInputBox->lastTextWidth = 0;
 	textInputBox->currentCharWidth = textInputBox->textImg->w;
-	// TODO:
-	// textInputBox->characterWidthStack = Stack();
+	textInputBox->characterWidthStack = SGE_LLCreate(NULL);
 
 	textInputBox->showCursor = false;
 	textInputBox->lastTime = 0;
@@ -1909,6 +1908,7 @@ void SGE_DestroyTextInputBox(SGE_TextInputBox *textInputBox)
 {
 	if(textInputBox != NULL)
 	{
+		SGE_LLDestroy(textInputBox->characterWidthStack);
 		free(textInputBox->text);
 		SGE_FreeTexture(textInputBox->textImg);
 		free(textInputBox);
@@ -1968,10 +1968,9 @@ void SGE_TextInputBoxHandleEvents(SGE_TextInputBox *textInputBox)
 			SGE_UpdateTextureFromText(textInputBox->textImg, textInputBox->text, textBoxFont, SGE_COLOR_BLACK, SGE_TEXT_MODE_BLENDED);
 			textInputBox->onTextEnter(textInputBox->onTextEnter_data);
 
-			textInputBox->cursor_dx += textInputBox->currentCharWidth;
+			textInputBox->cursor_dx = textInputBox->textImg->w;
 			textInputBox->currentCharWidth = textInputBox->textImg->w - textInputBox->lastTextWidth;
-			// TODO: Push currentCharWidth to character width stack
-			// Push(characterWidthStack, currentCharWidth);
+			SGE_LLPush(textInputBox->characterWidthStack, textInputBox->currentCharWidth);
 			textInputBox->lastTextWidth = textInputBox->textImg->w;
 		}
 		else
@@ -1988,18 +1987,23 @@ void SGE_TextInputBoxHandleEvents(SGE_TextInputBox *textInputBox)
 			
 			textInputBox->text[i - 1] = '\0';
 			
+			textInputBox->cursor_dx -= textInputBox->currentCharWidth;
+			SGE_LLPop(textInputBox->characterWidthStack);
+
 			if(i == 1)
+			{
 				SGE_UpdateTextureFromText(textInputBox->textImg, " ", textBoxFont, SGE_COLOR_BLACK, SGE_TEXT_MODE_BLENDED);
+				textInputBox->currentCharWidth = 0;
+				textInputBox->lastTextWidth = 0;
+			}
 			else
+			{
 				SGE_UpdateTextureFromText(textInputBox->textImg, textInputBox->text, textBoxFont, SGE_COLOR_BLACK, SGE_TEXT_MODE_BLENDED);
+				textInputBox->currentCharWidth = (int) SGE_LLGetLast(textInputBox->characterWidthStack);
+				textInputBox->lastTextWidth = textInputBox->textImg->w;
+			}
 			
 			textInputBox->onTextDelete(textInputBox->onTextDelete_data);
-
-			textInputBox->cursor_dx -= textInputBox->currentCharWidth;
-			// TODO: Pop currentCharWidth from character width stack
-			// Pop(characterWidthStack);
-			// textInputBox->currentCharWidth = Top(characterWidthStack);
-			textInputBox->lastTextWidth = textInputBox->textImg->w;
 		}
 		break;
 	}
@@ -2110,6 +2114,17 @@ void SGE_TextInputBoxSetPosition(SGE_TextInputBox *textInputBox, int x, int y)
 	{
 		SGE_WindowPanelCalculateMCR(textInputBox->parentPanel, textInputBox->boundBox);
 	}
+}
+
+void SGE_TextInputBoxClear(SGE_TextInputBox *textInputBox)
+{
+	textInputBox->text[0] = '\0';
+	SGE_UpdateTextureFromText(textInputBox->textImg, " ", textBoxFont, SGE_COLOR_BLACK, SGE_TEXT_MODE_BLENDED);
+	textInputBox->currentCharWidth = 0;
+	textInputBox->lastTextWidth = 0;
+	SGE_LLClear(textInputBox->characterWidthStack);
+	textInputBox->cursor_dx = 0;
+	textInputBox->cursor_dy = 0;
 }
 
 SGE_ListBox *SGE_CreateListBox(int listCount, char list[][LIST_OPTION_LENGTH], int x, int y, SGE_WindowPanel *panel)

@@ -2,6 +2,7 @@
 #define __SGE_GUI_H__
 
 #include "SGE_Texture.h"
+#include "SGE_Containers.h"
 #include <stdbool.h>
 
 typedef struct SGE_WindowPanel    SGE_WindowPanel;
@@ -166,8 +167,7 @@ typedef struct SGE_TextInputBox
 	SGE_Texture *textImg;
 	int lastTextWidth;
 	int currentCharWidth;
-	// TODO: Create a stack of character widths for cursor to follow on text delete.
-	// LikedList *characterWidthStack;
+	SGE_LinkedList *characterWidthStack;
 	
 	void (*onEnable)(void *data);
 	void *onEnable_data;
@@ -356,6 +356,7 @@ void SGE_TextInputBoxUpdate(SGE_TextInputBox *textInputBox);
 void SGE_TextInputBoxRender(SGE_TextInputBox *textInputBox);
 void SGE_TextInputBoxSetPosition(SGE_TextInputBox *textInputBox, int x, int y);
 void SGE_TextInputBoxSetPositionNextTo(SGE_TextInputBox *textInputBox, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
+void SGE_TextInputBoxClear(SGE_TextInputBox *textInputBox);
 
 SGE_ListBox *SGE_CreateListBox(int listCount, char list[][LIST_OPTION_LENGTH], int x, int y, SGE_WindowPanel *panel);
 void SGE_DestroyListBox(SGE_ListBox *listBox);

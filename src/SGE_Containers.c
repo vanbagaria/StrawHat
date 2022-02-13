@@ -17,13 +17,13 @@ SGE_LinkedList *SGE_LLDestroy(SGE_LinkedList *list)
 {
     if(list->head != NULL)
     {
-        SGE_LLFree(list);
+        SGE_LLClear(list);
     }
     free(list);
     return NULL;
 }
 
-void SGE_LLFree(SGE_LinkedList *list)
+void SGE_LLClear(SGE_LinkedList *list)
 {
     int count = 0;
     SGE_LLNode *current = list->head;
@@ -71,6 +71,27 @@ void SGE_LLPush(SGE_LinkedList *list, void *data)
     list->size++;
 }
 
+void *SGE_LLGetLast(SGE_LinkedList *list)
+{
+    if(list == NULL)
+    {
+        SGE_LogPrintLine(SGE_LOG_WARNING, "Attempt access NULL linked list!");
+        return;
+    }
+    
+    SGE_LLNode *current = list->head;
+    if(current == NULL)
+    {
+        return NULL;
+    }
+    
+    while(current->next != NULL)
+    {
+        current = current->next;
+    }
+    return current->data;
+}
+
 /*
  *  This can be made faster by adding a tail pointer to the Linked List
  */
@@ -82,6 +103,13 @@ void SGE_LLPop(SGE_LinkedList *list)
         return;
     }
     
+    if(list->head->next == NULL)
+    {
+        free(list->head);
+        list->head = NULL;
+        return;
+    }
+
     SGE_LLNode *current = list->head;
     SGE_LLNode *temp = NULL;
     while(current->next != NULL)

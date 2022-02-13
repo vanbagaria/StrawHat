@@ -20,12 +20,13 @@ typedef struct
 
 SGE_LinkedList *SGE_LLCreate(void (*deallocator)(void *data));
 SGE_LinkedList *SGE_LLDestroy(SGE_LinkedList *list);
-void SGE_LLFree(SGE_LinkedList *list);
+void SGE_LLClear(SGE_LinkedList *list);
 void SGE_LLPush(SGE_LinkedList *list, void *data);
 void SGE_LLPop(SGE_LinkedList *list);
 void SGE_LLRemove(SGE_LinkedList *list, SGE_LLNode *node);
 void SGE_LLProcess(SGE_LinkedList *list, void (*processFunc)(SGE_LinkedList *list, SGE_LLNode* currentNode, void *processData), void *data);
 void SGE_LLPrint(SGE_LinkedList *list, void (*printFunc)(void *data));
+void *SGE_LLGetLast(SGE_LinkedList *list);
 
 void SGE_LLInsert(SGE_LinkedList *list, SGE_LLNode *insertAfter, void *data); // To be implemented
 void SGE_LLPushFront(SGE_LinkedList *list, void *data); // To be implemented

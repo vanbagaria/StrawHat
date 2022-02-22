@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 /* Engine data pointer */
 static SGE_EngineData *engine = NULL;
@@ -1450,6 +1451,24 @@ void SGE_TextLabelSetText(SGE_TextLabel *label, const char *text)
 	{
 		SGE_WindowPanelCalculateMCR(label->parentPanel, label->boundBox);
 	}
+}
+
+void SGE_TextLabelSetTextf(SGE_TextLabel *label, const char *format, ...)
+{
+    va_list args;
+	va_start(args, format);
+
+    vsnprintf(label->text, 200, format, args);
+	SGE_UpdateTextureFromText(label->textImg, label->text, label->font, label->fgColor, label->mode);
+	label->boundBox.w = label->textImg->w;
+	label->boundBox.h = label->textImg->h;
+	
+	if(label->parentPanel != NULL)
+	{
+		SGE_WindowPanelCalculateMCR(label->parentPanel, label->boundBox);
+	}
+
+	va_end(args);
 }
 
 void SGE_TextLabelSetFGColor(SGE_TextLabel *label, SDL_Color fg)

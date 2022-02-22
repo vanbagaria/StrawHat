@@ -110,7 +110,7 @@ typedef struct SGE_TextLabel
 	struct SGE_WindowPanel *parentPanel;
 	Uint8 alpha;
 	
-	char text[200];
+	char text[200]; // TODO: Change to dynamic string
 	TTF_Font *font;
 	SDL_Color fgColor;
 	SDL_Color bgColor;
@@ -334,6 +334,7 @@ void SGE_DestroyTextLabel(SGE_TextLabel *label);
 void SGE_TextLabelRender(SGE_TextLabel *label);
 void SGE_TextLabelSetPosition(SGE_TextLabel *label, int x, int y);
 void SGE_TextLabelSetText(SGE_TextLabel *label, const char *text);
+void SGE_TextLabelSetTextf(SGE_TextLabel *label, const char *format, ...);
 void SGE_TextLabelSetFGColor(SGE_TextLabel *label, SDL_Color fg);
 void SGE_TextLabelSetBGColor(SGE_TextLabel *label, SDL_Color bg);
 void SGE_TextLabelSetMode(SGE_TextLabel *label, SGE_TextRenderMode mode);

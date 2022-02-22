@@ -8,6 +8,11 @@ int SGE_MathRandRangeInt(int lowerRange, int higherRange)
 	return (rand() % (higherRange - lowerRange)) + lowerRange;
 }
 
+float SGE_truncf(float value, float places)
+{
+    return value - (SDL_fmodf(value, 1.0f / SDL_powf(10.0f, places)));
+}
+
 unsigned int SGE_GetTimerTime(SGE_Timer *timer)
 {
 	if(timer->paused)

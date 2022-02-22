@@ -424,3 +424,12 @@ bool SGE_isMouseOver(SDL_Rect *rect)
 	}
 	return false;
 }
+
+bool SGE_KeyIsPressed(SDL_Scancode scancode)
+{
+	if(engine.keyboardState[scancode])
+	{
+		return true;
+	}
+	return false;
+}

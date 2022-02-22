@@ -73,6 +73,7 @@ void SGE_DrawLine(int x1, int y1, int x2, int y2);
 
 bool SGE_CheckRectsCollision(const SDL_Rect *r1, const SDL_Rect *r2);
 bool SGE_isMouseOver(SDL_Rect *rect);
+bool SGE_KeyIsPressed(SDL_Scancode scancode);
 
 /* Color constants */
 

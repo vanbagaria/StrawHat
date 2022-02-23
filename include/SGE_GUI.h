@@ -1,7 +1,7 @@
 #ifndef __SGE_GUI_H__
 #define __SGE_GUI_H__
 
-#include "SGE_Texture.h"
+#include "SGE_Graphics.h"
 #include "SGE_Containers.h"
 #include <stdbool.h>
 

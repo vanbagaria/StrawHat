@@ -62,36 +62,8 @@ void SGE_ToggleFullscreen();
 void SGE_ToggleVsync();
 void SGE_SetTargetFPS(int fps);
 
-void SGE_SetBackgroundColor(SDL_Color color);
-void SGE_ClearScreenRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-void SGE_ClearScreen(SDL_Color color);
-void SGE_SetDrawColorRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-void SGE_SetDrawColor(SDL_Color color);
-void SGE_DrawRect(SDL_Rect *rect);
-void SGE_DrawFillRect(SDL_Rect *rect);
-void SGE_DrawLine(int x1, int y1, int x2, int y2);
-
 bool SGE_CheckRectsCollision(const SDL_Rect *r1, const SDL_Rect *r2);
 bool SGE_isMouseOver(SDL_Rect *rect);
 bool SGE_KeyIsPressed(SDL_Scancode scancode);
-
-/* Color constants */
-
-extern const SDL_Color SGE_COLOR_WHITE;
-extern const SDL_Color SGE_COLOR_BLACK;
-extern const SDL_Color SGE_COLOR_GRAY;
-extern const SDL_Color SGE_COLOR_RED;
-extern const SDL_Color SGE_COLOR_GREEN;
-extern const SDL_Color SGE_COLOR_BLUE;
-extern const SDL_Color SGE_COLOR_YELLOW;
-extern const SDL_Color SGE_COLOR_PINK;
-extern const SDL_Color SGE_COLOR_AQUA;
-extern const SDL_Color SGE_COLOR_LIGHT_GRAY;
-extern const SDL_Color SGE_COLOR_LIGHT_PURPLE;
-extern const SDL_Color SGE_COLOR_DARK_RED;
-extern const SDL_Color SGE_COLOR_CERISE;
-extern const SDL_Color SGE_COLOR_ORANGE;
-extern const SDL_Color SGE_COLOR_INDIGO;
-extern const SDL_Color SGE_COLOR_PURPLE;
 
 #endif

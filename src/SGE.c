@@ -1,7 +1,6 @@
 #include "SGE.h"
 #include "SGE_GameState.h"
 #include "SGE_Logger.h"
-#include "SGE_Texture.h"
 #include "SGE_GUI.h"
 
 #include <SDL2/SDL.h>
@@ -11,23 +10,6 @@
 
 #include <stdlib.h>
 #include <time.h>
-
-const SDL_Color SGE_COLOR_WHITE        = {255, 255, 255, 255};
-const SDL_Color SGE_COLOR_BLACK        = {  0,   0,   0, 255};
-const SDL_Color SGE_COLOR_GRAY         = { 50,  50,  50, 255};
-const SDL_Color SGE_COLOR_RED          = {255,   0,   0, 255};
-const SDL_Color SGE_COLOR_GREEN        = {  0, 255,   0, 255};
-const SDL_Color SGE_COLOR_BLUE         = {  0,   0, 255, 255};
-const SDL_Color SGE_COLOR_YELLOW       = {255, 255,   0, 255};
-const SDL_Color SGE_COLOR_PINK         = {255,   0, 255, 255};
-const SDL_Color SGE_COLOR_AQUA         = {  0, 255, 255, 255};
-const SDL_Color SGE_COLOR_LIGHT_GRAY   = {195, 195, 195, 255};
-const SDL_Color SGE_COLOR_LIGHT_PURPLE = {200, 191, 231, 255};
-const SDL_Color SGE_COLOR_DARK_RED     = {136,   0,  21, 255};
-const SDL_Color SGE_COLOR_CERISE       = {222,  49,  99, 255};
-const SDL_Color SGE_COLOR_ORANGE       = {255, 127,   0, 255};
-const SDL_Color SGE_COLOR_INDIGO       = { 63,  72, 204, 255};
-const SDL_Color SGE_COLOR_PURPLE       = {163,  73, 164, 255};
 
 /* Global engine data */
 static SGE_EngineData engine;
@@ -349,50 +331,6 @@ void SGE_SetTargetFPS(int fps)
 		engine.perFrameTime = 1000 / fps;
 		SGE_LogPrintLine(SGE_LOG_INFO, "Target FPS set to %d", engine.fps);
 	}
-}
-
-/* Rendering Functions */
-
-void SGE_SetBackgroundColor(SDL_Color color)
-{
-	engine.defaultScreenClearColor = color;
-}
-
-void SGE_ClearScreenRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
-{
-	SDL_SetRenderDrawColor(engine.renderer, r, g, b, a);
-	SDL_RenderClear(engine.renderer);
-}
-
-void SGE_ClearScreen(SDL_Color color)
-{
-	SDL_SetRenderDrawColor(engine.renderer, color.r, color.g, color.b, color.a);
-	SDL_RenderClear(engine.renderer);
-}
-
-void SGE_SetDrawColorRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
-{
-	SDL_SetRenderDrawColor(engine.renderer, r, g, b, a);
-}
-
-void SGE_SetDrawColor(SDL_Color color)
-{
-	SDL_SetRenderDrawColor(engine.renderer, color.r, color.g, color.b, color.a);
-}
-
-void SGE_DrawRect(SDL_Rect *rect)
-{
-	SDL_RenderDrawRect(engine.renderer, rect);
-}
-
-void SGE_DrawFillRect(SDL_Rect *rect)
-{
-	SDL_RenderFillRect(engine.renderer, rect);
-}
-
-void SGE_DrawLine(int x1, int y1, int x2, int y2)
-{
-	SDL_RenderDrawLine(engine.renderer, x1, y1, x2, y2);
 }
 
 /*

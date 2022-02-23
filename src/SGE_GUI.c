@@ -64,7 +64,44 @@ static SGE_TextLabel *fpsLabel;
 static char vsyncStr[10];
 static SGE_TextLabel *vsyncLabel;
 
-/* Generalization of GUI control lists */
+/* GUI control functions */
+
+static void SGE_DestroyButton(SGE_Button *button);
+static void SGE_ButtonHandleEvents(SGE_Button *button);
+static void SGE_ButtonUpdate(SGE_Button *button);
+static void SGE_ButtonRender(SGE_Button *button);
+
+static void SGE_DestroyCheckBox(SGE_CheckBox *checkBox);
+static void SGE_CheckBoxHandleEvents(SGE_CheckBox *checkBox);
+static void SGE_CheckBoxUpdate(SGE_CheckBox *checkBox);
+static void SGE_CheckBoxRender(SGE_CheckBox *checkBox);
+
+static void SGE_DestroyTextLabel(SGE_TextLabel *label);
+static void SGE_TextLabelRender(SGE_TextLabel *label);
+
+static void SGE_DestroySlider(SGE_Slider *slider);
+static void SGE_SliderHandleEvents(SGE_Slider *slider);
+static void SGE_SliderUpdate(SGE_Slider *slider);
+static void SGE_SliderRender(SGE_Slider *slider);
+
+static void SGE_DestroyTextInputBox(SGE_TextInputBox *textInputBox);
+static void SGE_TextInputBoxHandleEvents(SGE_TextInputBox *textInputBox);
+static void SGE_TextInputBoxUpdate(SGE_TextInputBox *textInputBox);
+static void SGE_TextInputBoxRender(SGE_TextInputBox *textInputBox);
+
+static void SGE_DestroyListBox(SGE_ListBox *listBox);
+static void SGE_ListBoxHandleEvents(SGE_ListBox *listBox);
+static void SGE_ListBoxUpdate(SGE_ListBox *listBox);
+static void SGE_ListBoxRender(SGE_ListBox *listBox);
+
+static void SGE_DestroyWindowPanel(SGE_WindowPanel *panel);
+static void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel);
+static void SGE_WindowPanelUpdate(SGE_WindowPanel *panel);
+static void SGE_WindowPanelRender(SGE_WindowPanel *panel);
+static void SGE_WindowPanelCalculateMCR(SGE_WindowPanel *panel, SDL_Rect boundBox);
+static void SGE_WindowPanelShouldEnableHorizontalScroll(SGE_WindowPanel *panel);
+static void SGE_WindowPanelShouldEnableVerticalScroll(SGE_WindowPanel *panel);
+
 static void SGE_GUI_ControlList_HandleEvents(SGE_GUI_ControlList *controls);
 static void SGE_GUI_ControlList_Update(SGE_GUI_ControlList *controls);
 static void SGE_GUI_ControlList_Render(SGE_GUI_ControlList *controls);
@@ -178,7 +215,7 @@ static void SGE_GUI_DebugState_Update()
 	}
 }
 
-char *SGE_GetPanelListAsStr()
+const char *SGE_GetPanelListAsStr()
 {
 	return panelsListStr;
 }
@@ -459,7 +496,6 @@ void SGE_GUI_Render()
 	}
 }
 
-/* Syncs GUI with game state */
 void SGE_GUI_UpdateCurrentState(const char *nextState)
 {
 	int i;
@@ -3513,6 +3549,17 @@ void SGE_WindowPanelShouldEnableVerticalScroll(SGE_WindowPanel *panel)
 }
 
 /* Layouting functions for easy GUI Layouting */
+
+/**
+ * \brief Calculates a position for a given control based on another control.
+ * 
+ * \param controlBoundBox The bounds of the control for which to calculate position.
+ * \param targetBoundBox  The bounds of the control used as a target for the new position.
+ * \param direction       The direction to place the new position in relative to the target.
+ * \param spacing_x       The horizontal offset for the new position.
+ * \param spacing_y       The vertical offset for the new position.
+ * \return SDL_Point 
+ */
 SDL_Point SGE_ControlGetPositionNextTo(SDL_Rect controlBoundBox, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y)
 {
 	SDL_Point position = {0, 0};

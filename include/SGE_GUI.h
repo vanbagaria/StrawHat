@@ -21,7 +21,13 @@ typedef struct SGE_ListBox        SGE_ListBox;
 #define STATE_MAX_LISTBOXES        50
 #define STATE_MAX_PANELS           50
 
-/* A list of GUI controls that is held by each state in SGE */
+/**
+ * \brief A list of GUI controls that is held by each state in SGE.
+ * 
+ * Each state holds a copy of this structure to maintain it's controls.
+ * The SGE GUI holds a reference to the current state's control list to be used by
+ * GUI functions.
+ */
 typedef struct SGE_GUI_ControlList
 {
 	/* Panel Stack */
@@ -29,6 +35,7 @@ typedef struct SGE_GUI_ControlList
 	int panelCount;
 
 	/* Parentless Controls */
+
 	SGE_Button *buttons[STATE_MAX_BUTTONS];
 	int buttonCount;
 	SGE_CheckBox *checkBoxes[STATE_MAX_CHECKBOXES];
@@ -311,27 +318,39 @@ void SGE_GUI_HandleEvents();
 void SGE_GUI_Update();
 void SGE_GUI_Render();
 
+/**
+ * \brief Updates the control list to be used by SGE GUI functions.
+ * 
+ * This function is automatically called by SGE_SwitchStates() after a state switch is triggered
+ * so the new state's SGE_GUI_ControlList is used by GUI functions.
+ * It also resets the state of all the controls in the new state since a state switch might have
+ * left the controls in an altered state. (e.g if a button is used to trigger a state switch)
+ * 
+ * \param nextState The name of the state that is being switched to.
+ */
 void SGE_GUI_UpdateCurrentState(const char *nextState);
+
+/**
+ * \brief Free's a game state's GUI control list.
+ * 
+ * This function will delete all the GUI controls that were created by the specified state.
+ * It is called automatically when a state is freed by the SGE_QuitState() function.
+ * 
+ * \note This should not be called by the user as the state might try to use a control
+ *       that has been freed.
+ * 
+ * \param name The name of the state whose GUI controls should be freed.
+ */
 void SGE_GUI_FreeState(const char *state);
 
 SGE_Button *SGE_CreateButton(const char *text, int x, int y, struct SGE_WindowPanel *panel);
-void SGE_DestroyButton(SGE_Button *button);
-void SGE_ButtonHandleEvents(SGE_Button *button);
-void SGE_ButtonUpdate(SGE_Button *button);
-void SGE_ButtonRender(SGE_Button *button);
 void SGE_ButtonSetPosition(SGE_Button *button, int x, int y);
 
 SGE_CheckBox *SGE_CreateCheckBox(int x, int y, struct SGE_WindowPanel *panel);
-void SGE_DestroyCheckBox(SGE_CheckBox *checkBox);
-void SGE_CheckBoxHandleEvents(SGE_CheckBox *checkBox);
-void SGE_CheckBoxUpdate(SGE_CheckBox *checkBox);
-void SGE_CheckBoxRender(SGE_CheckBox *checkBox);
 void SGE_CheckBoxSetPosition(SGE_CheckBox *checkBox, int x, int y);
 
 SGE_TextLabel *SGE_CreateTextLabel(const char *text, int x, int y, SDL_Color color, struct SGE_WindowPanel *panel);
 SGE_TextLabel *SGE_CreateTextLabelCustom(const char *text, int x, int y, SDL_Color color, TTF_Font *font, struct SGE_WindowPanel *panel);
-void SGE_DestroyTextLabel(SGE_TextLabel *label);
-void SGE_TextLabelRender(SGE_TextLabel *label);
 void SGE_TextLabelSetPosition(SGE_TextLabel *label, int x, int y);
 void SGE_TextLabelSetText(SGE_TextLabel *label, const char *text);
 void SGE_TextLabelSetTextf(SGE_TextLabel *label, const char *format, ...);
@@ -342,48 +361,34 @@ void SGE_TextLabelSetAlpha(SGE_TextLabel *label, Uint8 alpha);
 void SGE_TextLabelSetVisible(SGE_TextLabel *label, bool visible);
 
 SGE_Slider *SGE_CreateSlider(int x, int y, struct SGE_WindowPanel *panel);
-void SGE_DestroySlider(SGE_Slider *slider);
-void SGE_SliderHandleEvents(SGE_Slider *slider);
-void SGE_SliderUpdate(SGE_Slider *slider);
-void SGE_SliderRender(SGE_Slider *slider);
 void SGE_SliderSetPosition(SGE_Slider *slider, int x, int y);
 void SGE_SliderSetValue(SGE_Slider *slider, double value);
 void SGE_SliderUpdateValue(SGE_Slider *slider);
 
 SGE_TextInputBox *SGE_CreateTextInputBox(int maxTextLength, int x, int y, struct SGE_WindowPanel *panel);
-void SGE_DestroyTextInputBox(SGE_TextInputBox *textInputBox);
-void SGE_TextInputBoxHandleEvents(SGE_TextInputBox *textInputBox);
-void SGE_TextInputBoxUpdate(SGE_TextInputBox *textInputBox);
-void SGE_TextInputBoxRender(SGE_TextInputBox *textInputBox);
 void SGE_TextInputBoxSetPosition(SGE_TextInputBox *textInputBox, int x, int y);
 void SGE_TextInputBoxSetPositionNextTo(SGE_TextInputBox *textInputBox, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
 void SGE_TextInputBoxClear(SGE_TextInputBox *textInputBox);
 
 SGE_ListBox *SGE_CreateListBox(int listCount, char list[][LIST_OPTION_LENGTH], int x, int y, SGE_WindowPanel *panel);
-void SGE_DestroyListBox(SGE_ListBox *listBox);
-void SGE_ListBoxHandleEvents(SGE_ListBox *listBox);
-void SGE_ListBoxUpdate(SGE_ListBox *listBox);
-void SGE_ListBoxRender(SGE_ListBox *listBox);
 void SGE_ListBoxSetPosition(SGE_ListBox *listBox, int x, int y);
 void SGE_ListBoxSetPositionNextTo(SGE_ListBox *listBox, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
 
 SGE_WindowPanel *SGE_CreateWindowPanel(const char *title, int x, int y, int w, int h);
-void SGE_DestroyWindowPanel(SGE_WindowPanel *panel);
-void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel);
-void SGE_WindowPanelUpdate(SGE_WindowPanel *panel);
-void SGE_WindowPanelRender(SGE_WindowPanel *panel);
 void SGE_WindowPanelSetPosition(SGE_WindowPanel *panel, int x, int y);
 void SGE_WindowPanelSetSize(SGE_WindowPanel *panel, int w, int h);
 void SGE_SetActiveWindowPanel(SGE_WindowPanel *panel);
 void SGE_SendActivePanelToTop();
 SGE_WindowPanel *SGE_GetActiveWindowPanel();
-char *SGE_GetPanelListAsStr();
 void SGE_WindowPanelToggleMinimized(SGE_WindowPanel *panel);
-void SGE_WindowPanelCalculateMCR(SGE_WindowPanel *panel, SDL_Rect boundBox);
-void SGE_WindowPanelShouldEnableHorizontalScroll(SGE_WindowPanel *panel);
-void SGE_WindowPanelShouldEnableVerticalScroll(SGE_WindowPanel *panel);
 
-SDL_Point SGE_ControlGetPositionNextTo(SDL_Rect controlBoundBox, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
+/**
+ * \brief Get a list of panels in the current state as a string.
+ * 
+ * \return String containing names of panels in the current state.
+ */
+const char *SGE_GetPanelListAsStr();
+
 void SGE_ButtonSetPositionNextTo(SGE_Button *button, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
 void SGE_CheckBoxSetPositionNextTo(SGE_CheckBox *checkBox, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
 void SGE_TextLabelSetPositionNextTo(SGE_TextLabel *label, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);

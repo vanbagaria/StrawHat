@@ -318,31 +318,6 @@ void SGE_GUI_HandleEvents();
 void SGE_GUI_Update();
 void SGE_GUI_Render();
 
-/**
- * \brief Updates the control list to be used by SGE GUI functions.
- * 
- * This function is automatically called by SGE_SwitchStates() after a state switch is triggered
- * so the new state's SGE_GUI_ControlList is used by GUI functions.
- * It also resets the state of all the controls in the new state since a state switch might have
- * left the controls in an altered state. (e.g if a button is used to trigger a state switch)
- * 
- * \param nextState The name of the state that is being switched to.
- */
-void SGE_GUI_UpdateCurrentState(const char *nextState);
-
-/**
- * \brief Free's a game state's GUI control list.
- * 
- * This function will delete all the GUI controls that were created by the specified state.
- * It is called automatically when a state is freed by the SGE_QuitState() function.
- * 
- * \note This should not be called by the user as the state might try to use a control
- *       that has been freed.
- * 
- * \param name The name of the state whose GUI controls should be freed.
- */
-void SGE_GUI_FreeState(const char *state);
-
 SGE_Button *SGE_CreateButton(const char *text, int x, int y, struct SGE_WindowPanel *panel);
 void SGE_ButtonSetPosition(SGE_Button *button, int x, int y);
 
@@ -394,4 +369,40 @@ void SGE_CheckBoxSetPositionNextTo(SGE_CheckBox *checkBox, SDL_Rect targetBoundB
 void SGE_TextLabelSetPositionNextTo(SGE_TextLabel *label, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
 void SGE_SliderSetPositionNextTo(SGE_Slider *slider, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
 void SGE_WindowPanelSetPositionNextTo(SGE_WindowPanel *panel, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
+
+
+/**
+ * \brief Updates the SDL_Renderer to be used by SGE_GUI.c
+ * 
+ */
+void SGE_GUI_UpdateSDLRenderer();
+
+/**
+ * \brief Updates the control list to be used by SGE GUI functions.
+ * 
+ * This function is automatically called by SGE_SwitchStates() after a state switch is triggered
+ * so the new state's SGE_GUI_ControlList is used by GUI functions.
+ * It also resets the state of all the controls in the new state since a state switch might have
+ * left the controls in an altered state. (e.g if a button is used to trigger a state switch)
+ * 
+ * \note This should not be called by the user, as it could lead to another
+ *       state's GUI being rendered over the current state.
+ * 
+ * \param nextState The name of the state that is being switched to.
+ */
+void SGE_GUI_UpdateCurrentState(const char *nextState);
+
+/**
+ * \brief Free's a game state's GUI control list.
+ * 
+ * This function will delete all the GUI controls that were created by the specified state.
+ * It is called automatically when a state is freed by the SGE_QuitState() function.
+ * 
+ * \note This should not be called by the user, as the state might try to use a control
+ *       that has been freed.
+ * 
+ * \param name The name of the state whose GUI controls should be freed.
+ */
+void SGE_GUI_FreeState(const char *state);
+
 #endif

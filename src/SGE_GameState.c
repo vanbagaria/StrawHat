@@ -152,7 +152,7 @@ void SGE_InitState(SGE_GameState *state)
 	SGE_LogPrintLine(SGE_LOG_INFO, "Initializing state: \"%s\"...", state->name);
 	if(!state->init())
 	{
-		SGE_GetEngineData()->isRunning = false;
+		SGE_Quit();
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed Initializing State!");
 	}
 	else

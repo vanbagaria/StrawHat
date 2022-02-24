@@ -1,13 +1,12 @@
-#include "SGE.h"
 #include "SGE_GUI.h"
 #include "SGE_Logger.h"
+#include "SGE.h" // To be removed
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 
-/* Engine data pointer */
-static SGE_EngineData *engine = NULL;
+static SDL_Renderer *renderer = NULL;
 
 /* Default GUI Fonts */
 static TTF_Font *buttonFont = NULL;
@@ -142,7 +141,7 @@ static void SGE_GUI_DebugState_Init()
 	debugPanel->isMovable = false;
 	debugPanel->isMinimizable = false;
 	debugPanel->isResizable = false;
-	SGE_WindowPanelSetPosition(debugPanel, engine->screenWidth - debugPanel->boundBox.w, engine->screenHeight - debugPanel->boundBox.h);
+	SGE_WindowPanelSetPosition(debugPanel, SGE_GetScreenWidth() - debugPanel->boundBox.w, SGE_GetScreenHeight() - debugPanel->boundBox.h);
 
 	/* Create panel and state list labels */
 	panelListLabel = SGE_CreateTextLabel(panelsListStr, 10, 10, SGE_COLOR_WHITE, debugPanel);
@@ -165,7 +164,7 @@ static void SGE_GUI_DebugState_Init()
 
 	/* Create frame info labels */
 	deltaLabel = SGE_CreateTextLabel(" ", 0, 0, SGE_COLOR_WHITE, NULL);
-	SGE_TextLabelSetPosition(deltaLabel, 0, engine->screenHeight - deltaLabel->boundBox.h);
+	SGE_TextLabelSetPosition(deltaLabel, 0, SGE_GetScreenHeight() - deltaLabel->boundBox.h);
 	SGE_TextLabelSetMode(deltaLabel, SGE_TEXT_MODE_SHADED);
 	SGE_TextLabelSetBGColor(deltaLabel, SGE_COLOR_BLACK);
 
@@ -191,7 +190,7 @@ static void SGE_GUI_DebugState_Update()
 	/* Update frame info labels */
 	if(showFrameInfo)
 	{
-		sprintf(deltaStr, "dt: %.3f s", engine->delta);
+		sprintf(deltaStr, "dt: %.3f s", SGE_GetDeltaTime());
 		SGE_TextLabelSetText(deltaLabel, deltaStr);
 
 		/* Calculate the framerate */
@@ -205,7 +204,7 @@ static void SGE_GUI_DebugState_Update()
 		sprintf(fpsStr, "fps: %d", countedFPS);
 		SGE_TextLabelSetText(fpsLabel, fpsStr);
 
-		if(engine->isVsyncOn) {
+		if(SGE_VsyncIsOn()) {
 			sprintf(vsyncStr, "vsync: on");
 		}
 		else {
@@ -333,11 +332,17 @@ static void onSelectionChangeFallback(void *data)
 
 /* Main GUI functions called by SGE.c */
 
+void SGE_GUI_UpdateSDLRenderer()
+{
+	renderer = SGE_GetSDLRenderer();
+}
+
 bool SGE_GUI_Init()
 {
 	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Initializing SGE GUI...");
 	
-	engine = SGE_GetEngineData();
+	renderer = SGE_GetSDLRenderer();
+
 	strcpy(panelsListStr, "Panel List");
 	controlBoundsColor = SGE_COLOR_CERISE;
 	
@@ -437,10 +442,10 @@ void SGE_GUI_Quit()
 
 void SGE_GUI_HandleEvents()
 {
-	if(engine->event.type == SDL_KEYDOWN)
+	if(SGE_GetSDLEvent()->type == SDL_KEYDOWN)
 	{
 		/* Toggle debug state visibility */
-		if(engine->event.key.keysym.sym == SDLK_F1)
+		if(SGE_GetSDLEvent()->key.keysym.sym == SDLK_F1)
 		{
 			SGE_SetTextureWordWrap(500);
 			SGE_TextLabelSetText(panelListLabel, panelsListStr);
@@ -451,7 +456,7 @@ void SGE_GUI_HandleEvents()
 		/* Toggle debug panel visibility */
 		if(showDebugState)
 		{
-			if(engine->event.key.keysym.sym == SDLK_F2)
+			if(SGE_GetSDLEvent()->key.keysym.sym == SDLK_F2)
 			{			
 				debugPanel->isVisible = !debugPanel->isVisible;
 			}
@@ -500,6 +505,12 @@ void SGE_GUI_UpdateCurrentState(const char *nextState)
 {
 	int i;
 	currentStateControls = SGE_GetStateGUIList(nextState);
+	if(currentStateControls == NULL)
+	{
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Attempted switch to NULL GUI Control List!");
+		return;
+	}
+
 	printPanelsStr();
 	
 	/* Reset control states */
@@ -924,9 +935,9 @@ void SGE_DestroyButton(SGE_Button *button)
 
 void SGE_ButtonHandleEvents(SGE_Button *button)
 {
-	if(engine->event.type == SDL_MOUSEBUTTONDOWN)
+	if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONDOWN)
 	{
-		if(engine->event.button.button == 1)
+		if(SGE_GetSDLEvent()->button.button == 1)
 		{
 			if(SGE_isMouseOver(&button->boundBox))
 			{
@@ -946,9 +957,9 @@ void SGE_ButtonHandleEvents(SGE_Button *button)
 			}
 		}
 	}
-	else if(engine->event.type == SDL_MOUSEBUTTONUP)
+	else if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONUP)
 	{
-		if(engine->event.button.button == 1)
+		if(SGE_GetSDLEvent()->button.button == 1)
 		{
 			if(button->state == SGE_CONTROL_STATE_CLICKED)
 			{
@@ -975,7 +986,7 @@ void SGE_ButtonHandleEvents(SGE_Button *button)
 			}
 		}
 	}
-	else if(engine->event.type == SDL_MOUSEMOTION)
+	else if(SGE_GetSDLEvent()->type == SDL_MOUSEMOTION)
 	{
 		if(button->state != SGE_CONTROL_STATE_CLICKED)
 		{
@@ -1023,28 +1034,28 @@ void SGE_ButtonRender(SGE_Button *button)
 	int i = 0;
 	
 	/* Draw filled button background */
-	SDL_SetRenderDrawColor(engine->renderer, button->currentColor.r, button->currentColor.g, button->currentColor.b, button->alpha);
-	SDL_RenderFillRect(engine->renderer, &button->background);
+	SDL_SetRenderDrawColor(renderer, button->currentColor.r, button->currentColor.g, button->currentColor.b, button->alpha);
+	SDL_RenderFillRect(renderer, &button->background);
 	
 	/* Draw button border */
-	SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, button->alpha);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, button->alpha);
 	if(SGE_isMouseOver(&button->boundBox))
 	{
 		if(button->parentPanel != NULL)
 		{
 			if(SGE_isMouseOver(&button->parentPanel->background) && !SGE_isMouseOver(&button->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&button->parentPanel->verticalScrollbarBG))
-				SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, button->alpha);
+				SDL_SetRenderDrawColor(renderer, 225, 225, 225, button->alpha);
 			
 			for(i = button->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
-					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, button->alpha);
+					SDL_SetRenderDrawColor(renderer, 0, 0, 0, button->alpha);
 			}
 		}
 		else
-			SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, button->alpha);
+			SDL_SetRenderDrawColor(renderer, 225, 225, 225, button->alpha);
 	}
-	SDL_RenderDrawRect(engine->renderer, &button->background);
+	SDL_RenderDrawRect(renderer, &button->background);
 	
 	/* Draw button text image */
 	SGE_SetTextureAlpha(button->textImg, button->alpha);
@@ -1052,8 +1063,8 @@ void SGE_ButtonRender(SGE_Button *button)
 	
 	if(showControlBounds)
 	{
-		SDL_SetRenderDrawColor(engine->renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, button->alpha);
-		SDL_RenderDrawRect(engine->renderer, &button->boundBox);
+		SDL_SetRenderDrawColor(renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, button->alpha);
+		SDL_RenderDrawRect(renderer, &button->boundBox);
 	}
 }
 
@@ -1180,9 +1191,9 @@ void SGE_DestroyCheckBox(SGE_CheckBox *checkBox)
 
 void SGE_CheckBoxHandleEvents(SGE_CheckBox *checkBox)
 {
-	if(engine->event.type == SDL_MOUSEBUTTONDOWN)
+	if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONDOWN)
 	{
-		if(engine->event.button.button == 1)
+		if(SGE_GetSDLEvent()->button.button == 1)
 		{
 			if(SGE_isMouseOver(&checkBox->boundBox))
 			{
@@ -1202,9 +1213,9 @@ void SGE_CheckBoxHandleEvents(SGE_CheckBox *checkBox)
 			}
 		}
 	}
-	else if(engine->event.type == SDL_MOUSEBUTTONUP)
+	else if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONUP)
 	{
-		if(engine->event.button.button == 1)
+		if(SGE_GetSDLEvent()->button.button == 1)
 		{
 			if(checkBox->state == SGE_CONTROL_STATE_CLICKED)
 			{
@@ -1221,7 +1232,7 @@ void SGE_CheckBoxHandleEvents(SGE_CheckBox *checkBox)
 			}
 		}
 	}
-	else if(engine->event.type == SDL_MOUSEMOTION)
+	else if(SGE_GetSDLEvent()->type == SDL_MOUSEMOTION)
 	{
 		if(checkBox->state != SGE_CONTROL_STATE_CLICKED)
 		{
@@ -1263,40 +1274,40 @@ void SGE_CheckBoxRender(SGE_CheckBox *checkBox)
 	int i = 0;
 	
 	/* Draw white checkbox filled background */
-	SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, checkBox->alpha);
-	SDL_RenderFillRect(engine->renderer, &checkBox->bg);
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, checkBox->alpha);
+	SDL_RenderFillRect(renderer, &checkBox->bg);
 	
 	/* Draw gray checkbox border */
-	SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, checkBox->alpha);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, checkBox->alpha);
 	if(SGE_isMouseOver(&checkBox->boundBox))
 	{
 		if(checkBox->parentPanel != NULL)
 		{
 			if(SGE_isMouseOver(&checkBox->parentPanel->background) && !SGE_isMouseOver(&checkBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&checkBox->parentPanel->verticalScrollbarBG))
-				SDL_SetRenderDrawColor(engine->renderer, 150, 150, 150, checkBox->alpha);
+				SDL_SetRenderDrawColor(renderer, 150, 150, 150, checkBox->alpha);
 			
 			for(i = checkBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
-					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, checkBox->alpha);
+					SDL_SetRenderDrawColor(renderer, 0, 0, 0, checkBox->alpha);
 			}
 		}
 		else
-			SDL_SetRenderDrawColor(engine->renderer, 150, 150, 150, checkBox->alpha);
+			SDL_SetRenderDrawColor(renderer, 150, 150, 150, checkBox->alpha);
 	}
-	SDL_RenderDrawRect(engine->renderer, &checkBox->bg);
+	SDL_RenderDrawRect(renderer, &checkBox->bg);
 	
 	/* Draw the check inside the background */
 	if(checkBox->isChecked == true)
 	{
-		SDL_SetRenderDrawColor(engine->renderer, checkBox->checkColor.r, checkBox->checkColor.g, checkBox->checkColor.b, checkBox->alpha);
-		SDL_RenderFillRect(engine->renderer, &checkBox->check);
+		SDL_SetRenderDrawColor(renderer, checkBox->checkColor.r, checkBox->checkColor.g, checkBox->checkColor.b, checkBox->alpha);
+		SDL_RenderFillRect(renderer, &checkBox->check);
 	}
 	
 	if(showControlBounds)
 	{
-		SDL_SetRenderDrawColor(engine->renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, checkBox->alpha);
-		SDL_RenderDrawRect(engine->renderer, &checkBox->boundBox);
+		SDL_SetRenderDrawColor(renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, checkBox->alpha);
+		SDL_RenderDrawRect(renderer, &checkBox->boundBox);
 	}
 }
 
@@ -1436,16 +1447,16 @@ void SGE_TextLabelRender(SGE_TextLabel *label)
 	
 	if(label->showBG)
 	{
-		SDL_SetRenderDrawColor(engine->renderer, label->bgColor.r, label->bgColor.g, label->bgColor.b, label->bgColor.a);
-		SDL_RenderFillRect(engine->renderer, &label->boundBox);
+		SDL_SetRenderDrawColor(renderer, label->bgColor.r, label->bgColor.g, label->bgColor.b, label->bgColor.a);
+		SDL_RenderFillRect(renderer, &label->boundBox);
 	}
 	
 	SGE_RenderTexture(label->textImg);
 	
 	if(showControlBounds)
 	{
-		SDL_SetRenderDrawColor(engine->renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, label->alpha);
-		SDL_RenderDrawRect(engine->renderer, &label->boundBox);
+		SDL_SetRenderDrawColor(renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, label->alpha);
+		SDL_RenderDrawRect(renderer, &label->boundBox);
 	}
 }
 
@@ -1636,9 +1647,9 @@ void SGE_DestroySlider(SGE_Slider *slider)
 
 void SGE_SliderHandleEvents(SGE_Slider *slider)
 {
-	if(engine->event.type == SDL_MOUSEBUTTONDOWN)
+	if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONDOWN)
 	{
-		if(engine->event.button.button == 1)
+		if(SGE_GetSDLEvent()->button.button == 1)
 		{
 			if(SGE_isMouseOver(&slider->slider))
 			{
@@ -1647,14 +1658,14 @@ void SGE_SliderHandleEvents(SGE_Slider *slider)
 					if(SGE_isMouseOver(&slider->parentPanel->background) && !SGE_isMouseOver(&slider->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&slider->parentPanel->verticalScrollbarBG))
 					{
 						slider->state = SGE_CONTROL_STATE_CLICKED;
-						slider->move_dx = engine->mouse_x - slider->slider.x;
+						slider->move_dx = SGE_GetMouseX() - slider->slider.x;
 						slider->onMouseDown(slider->onMouseDown_data);
 					}
 				}
 				else
 				{
 					slider->state = SGE_CONTROL_STATE_CLICKED;
-					slider->move_dx = engine->mouse_x - slider->slider.x;
+					slider->move_dx = SGE_GetMouseX() - slider->slider.x;
 					slider->onMouseDown(slider->onMouseDown_data);
 				}
 			}
@@ -1665,9 +1676,9 @@ void SGE_SliderHandleEvents(SGE_Slider *slider)
 					if(SGE_isMouseOver(&slider->parentPanel->background) && !SGE_isMouseOver(&slider->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&slider->parentPanel->verticalScrollbarBG))
 					{
 						slider->state = SGE_CONTROL_STATE_CLICKED;
-						slider->slider_xi = engine->mouse_x - (slider->slider.w / 2);
+						slider->slider_xi = SGE_GetMouseX() - (slider->slider.w / 2);
 						slider->slider.x = slider->slider_xi;
-						slider->move_dx = engine->mouse_x - slider->slider.x;
+						slider->move_dx = SGE_GetMouseX() - slider->slider.x;
 						SGE_SliderUpdateValue(slider);
 						slider->onMouseDown(slider->onMouseDown_data);
 						slider->onSlide(slider->onSlide_data);
@@ -1676,9 +1687,9 @@ void SGE_SliderHandleEvents(SGE_Slider *slider)
 				else
 				{
 					slider->state = SGE_CONTROL_STATE_CLICKED;
-					slider->slider_xi = engine->mouse_x - (slider->slider.w / 2);
+					slider->slider_xi = SGE_GetMouseX() - (slider->slider.w / 2);
 					slider->slider.x = slider->slider_xi;
-					slider->move_dx = engine->mouse_x - slider->slider.x;
+					slider->move_dx = SGE_GetMouseX() - slider->slider.x;
 					SGE_SliderUpdateValue(slider);
 					slider->onMouseDown(slider->onMouseDown_data);
 					slider->onSlide(slider->onSlide_data);
@@ -1686,9 +1697,9 @@ void SGE_SliderHandleEvents(SGE_Slider *slider)
 			}
 		}
 	}
-	else if(engine->event.type == SDL_MOUSEBUTTONUP)
+	else if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONUP)
 	{
-		if(engine->event.button.button == 1)
+		if(SGE_GetSDLEvent()->button.button == 1)
 		{
 			if(slider->state == SGE_CONTROL_STATE_CLICKED)
 			{
@@ -1704,7 +1715,7 @@ void SGE_SliderHandleEvents(SGE_Slider *slider)
 			}
 		}
 	}
-	else if(engine->event.type == SDL_MOUSEMOTION)
+	else if(SGE_GetSDLEvent()->type == SDL_MOUSEMOTION)
 	{
 		if(slider->state == SGE_CONTROL_STATE_CLICKED)
 		{
@@ -1726,9 +1737,9 @@ void SGE_SliderUpdate(SGE_Slider *slider)
 		 * Possible fix is to skip recalculation if there is no difference in the result
 		 * and slider_xi apart from the decimal part.
 		*/
-		if((engine->mouse_x - slider->move_dx) != (int)slider->slider_xi)
+		if((SGE_GetMouseX() - slider->move_dx) != (int)slider->slider_xi)
 		{
-			slider->slider_xi = engine->mouse_x - slider->move_dx;
+			slider->slider_xi = SGE_GetMouseX() - slider->move_dx;
 			if(slider->slider_xi < slider->bar.x)
 				slider->slider_xi = slider->bar.x;
 			if(slider->slider_xi > slider->bar.x + slider->bar.w  - slider->slider.w)
@@ -1757,37 +1768,37 @@ void SGE_SliderRender(SGE_Slider *slider)
 {
 	int i = 0;
 	
-	SDL_SetRenderDrawColor(engine->renderer, slider->barColor.r, slider->barColor.g, slider->barColor.b, slider->alpha);
-	SDL_RenderFillRect(engine->renderer, &slider->bar);
-	SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, slider->alpha);
-	SDL_RenderDrawRect(engine->renderer, &slider->bar);
+	SDL_SetRenderDrawColor(renderer, slider->barColor.r, slider->barColor.g, slider->barColor.b, slider->alpha);
+	SDL_RenderFillRect(renderer, &slider->bar);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, slider->alpha);
+	SDL_RenderDrawRect(renderer, &slider->bar);
 	
-	SDL_SetRenderDrawColor(engine->renderer, slider->sliderColor.r, slider->sliderColor.g, slider->sliderColor.b, slider->alpha);
-	SDL_RenderFillRect(engine->renderer, &slider->slider);
+	SDL_SetRenderDrawColor(renderer, slider->sliderColor.r, slider->sliderColor.g, slider->sliderColor.b, slider->alpha);
+	SDL_RenderFillRect(renderer, &slider->slider);
 	
-	SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, slider->alpha);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, slider->alpha);
 	if(SGE_isMouseOver(&slider->slider) || slider->state == SGE_CONTROL_STATE_CLICKED)
 	{
 		if(slider->parentPanel != NULL)
 		{
 			if(SGE_isMouseOver(&slider->parentPanel->background) && !SGE_isMouseOver(&slider->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&slider->parentPanel->verticalScrollbarBG))
-				SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, slider->alpha);
+				SDL_SetRenderDrawColor(renderer, 225, 225, 225, slider->alpha);
 			
 			for(i = slider->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
-					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, slider->alpha);
+					SDL_SetRenderDrawColor(renderer, 0, 0, 0, slider->alpha);
 			}
 		}
 		else
-			SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, slider->alpha);
+			SDL_SetRenderDrawColor(renderer, 225, 225, 225, slider->alpha);
 	}
-	SDL_RenderDrawRect(engine->renderer, &slider->slider);
+	SDL_RenderDrawRect(renderer, &slider->slider);
 	
 	if(showControlBounds)
 	{
-		SDL_SetRenderDrawColor(engine->renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, slider->alpha);
-		SDL_RenderDrawRect(engine->renderer, &slider->boundBox);
+		SDL_SetRenderDrawColor(renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, slider->alpha);
+		SDL_RenderDrawRect(renderer, &slider->boundBox);
 	}
 }
 
@@ -1973,7 +1984,7 @@ void SGE_DestroyTextInputBox(SGE_TextInputBox *textInputBox)
 void SGE_TextInputBoxHandleEvents(SGE_TextInputBox *textInputBox)
 {
 	/* Enable or disable text input with mouse */
-	if(engine->event.type == SDL_MOUSEBUTTONDOWN)
+	if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONDOWN)
 	{
 		if(SGE_isMouseOver(&textInputBox->inputBox))
 		{
@@ -2014,12 +2025,12 @@ void SGE_TextInputBoxHandleEvents(SGE_TextInputBox *textInputBox)
 	if(!textInputBox->isEnabled)
 		return;
 	
-	switch(engine->event.type)
+	switch(SGE_GetSDLEvent()->type)
 	{
 		case SDL_TEXTINPUT:
 		if(strlen(textInputBox->text) < textInputBox->textLengthLimit - 1)
 		{
-			strcat(textInputBox->text, engine->event.text.text);
+			strcat(textInputBox->text, SGE_GetSDLEvent()->text.text);
 			SGE_UpdateTextureFromText(textInputBox->textImg, textInputBox->text, textBoxFont, SGE_COLOR_BLACK, SGE_TEXT_MODE_BLENDED);
 			textInputBox->onTextEnter(textInputBox->onTextEnter_data);
 
@@ -2033,7 +2044,7 @@ void SGE_TextInputBoxHandleEvents(SGE_TextInputBox *textInputBox)
 		break;
 		
 		case SDL_KEYDOWN:
-		if(engine->event.key.keysym.sym == SDLK_BACKSPACE)
+		if(SGE_GetSDLEvent()->key.keysym.sym == SDLK_BACKSPACE)
 		{
 			int i = strlen(textInputBox->text);
 			if(i == 0) {
@@ -2096,47 +2107,47 @@ void SGE_TextInputBoxRender(SGE_TextInputBox *textInputBox)
 			return;
 	}
 	
-	SDL_SetRenderDrawColor(engine->renderer, 150, 150, 150, textInputBox->alpha);
-	SDL_RenderFillRect(engine->renderer, &textInputBox->inputBox);
+	SDL_SetRenderDrawColor(renderer, 150, 150, 150, textInputBox->alpha);
+	SDL_RenderFillRect(renderer, &textInputBox->inputBox);
 	
 	if(textInputBox->isEnabled)
 	{
 		if(textInputBox->showCursor)
 		{
-			SDL_SetRenderDrawColor(engine->renderer, 150, 0, 0, textInputBox->alpha);
-			SDL_RenderFillRect(engine->renderer, &textInputBox->cursor);
-			SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, textInputBox->alpha);
-			SDL_RenderDrawRect(engine->renderer, &textInputBox->cursor);
+			SDL_SetRenderDrawColor(renderer, 150, 0, 0, textInputBox->alpha);
+			SDL_RenderFillRect(renderer, &textInputBox->cursor);
+			SDL_SetRenderDrawColor(renderer, 255, 255, 255, textInputBox->alpha);
+			SDL_RenderDrawRect(renderer, &textInputBox->cursor);
 		}
 	}
 	
 	SGE_RenderTexture(textInputBox->textImg);
 	
-	SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, textInputBox->alpha);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, textInputBox->alpha);
 	if(SGE_isMouseOver(&textInputBox->inputBox))
 	{
 		if(textInputBox->parentPanel != NULL)
 		{
 			if(SGE_isMouseOver(&textInputBox->parentPanel->background) && !SGE_isMouseOver(&textInputBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&textInputBox->parentPanel->verticalScrollbarBG))
-				SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, textInputBox->alpha);
+				SDL_SetRenderDrawColor(renderer, 255, 255, 255, textInputBox->alpha);
 			
 			int i = 0;
 			for(i = textInputBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
-					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, textInputBox->alpha);
+					SDL_SetRenderDrawColor(renderer, 0, 0, 0, textInputBox->alpha);
 			}
 		}
 		else
-			SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, textInputBox->alpha);
+			SDL_SetRenderDrawColor(renderer, 255, 255, 255, textInputBox->alpha);
 	}
-	SDL_RenderDrawRect(engine->renderer, &textInputBox->inputBox);
+	SDL_RenderDrawRect(renderer, &textInputBox->inputBox);
 	
 	if(showControlBounds)
 	{
-		SDL_SetRenderDrawColor(engine->renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, textInputBox->alpha);
-		SDL_RenderDrawRect(engine->renderer, &textInputBox->textImg->destRect);
-		SDL_RenderDrawRect(engine->renderer, &textInputBox->boundBox);
+		SDL_SetRenderDrawColor(renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, textInputBox->alpha);
+		SDL_RenderDrawRect(renderer, &textInputBox->textImg->destRect);
+		SDL_RenderDrawRect(renderer, &textInputBox->boundBox);
 	}
 }
 
@@ -2297,7 +2308,7 @@ void SGE_DestroyListBox(SGE_ListBox *listBox)
 
 void SGE_ListBoxHandleEvents(SGE_ListBox *listBox)
 {
-	if(engine->event.type == SDL_MOUSEBUTTONDOWN)
+	if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONDOWN)
 	{
 		if(SGE_isMouseOver(&listBox->selectionBox))
 		{
@@ -2379,34 +2390,34 @@ void SGE_ListBoxUpdate(SGE_ListBox *listBox)
 
 void SGE_ListBoxRender(SGE_ListBox *listBox)
 {
-	SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, listBox->alpha);
-	SDL_RenderFillRect(engine->renderer, &listBox->selectionBox);
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, listBox->alpha);
+	SDL_RenderFillRect(renderer, &listBox->selectionBox);
 	SGE_RenderTexture(listBox->selectionImg);
 	
-	SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, listBox->alpha);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, listBox->alpha);
 	if(SGE_isMouseOver(&listBox->selectionBox))
 	{
 		if(listBox->parentPanel != NULL)
 		{
 			if(SGE_isMouseOver(&listBox->parentPanel->background) && !SGE_isMouseOver(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&listBox->parentPanel->verticalScrollbarBG))
-				SDL_SetRenderDrawColor(engine->renderer, 150, 150, 150, listBox->alpha);
+				SDL_SetRenderDrawColor(renderer, 150, 150, 150, listBox->alpha);
 			
 			int i = 0;
 			for(i = listBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
-					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, listBox->alpha);
+					SDL_SetRenderDrawColor(renderer, 0, 0, 0, listBox->alpha);
 			}
 		}
 		else
-			SDL_SetRenderDrawColor(engine->renderer, 150, 150, 150, listBox->alpha);
+			SDL_SetRenderDrawColor(renderer, 150, 150, 150, listBox->alpha);
 	}
-	SDL_RenderDrawRect(engine->renderer, &listBox->selectionBox);
+	SDL_RenderDrawRect(renderer, &listBox->selectionBox);
 	
 	if(showControlBounds)
 	{
-		SDL_SetRenderDrawColor(engine->renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, listBox->alpha);
-		SDL_RenderDrawRect(engine->renderer, &listBox->boundBox);
+		SDL_SetRenderDrawColor(renderer, controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, listBox->alpha);
+		SDL_RenderDrawRect(renderer, &listBox->boundBox);
 	}
 	
 	if(listBox->isOpen)
@@ -2414,30 +2425,30 @@ void SGE_ListBoxRender(SGE_ListBox *listBox)
 		int i = 0;
 		for(i = 0; i < listBox->optionCount; i++)
 		{
-			SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, listBox->alpha);
+			SDL_SetRenderDrawColor(renderer, 255, 255, 255, listBox->alpha);
 			if(SGE_isMouseOver(&listBox->optionBoxes[i]))
 			{
 				if(listBox->parentPanel != NULL)
 				{
 					if(SGE_isMouseOver(&listBox->parentPanel->background) && !SGE_isMouseOver(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&listBox->parentPanel->verticalScrollbarBG))
-						SDL_SetRenderDrawColor(engine->renderer, 50, 50, 150, listBox->alpha);
+						SDL_SetRenderDrawColor(renderer, 50, 50, 150, listBox->alpha);
 					
 					int i = 0;
 					for(i = listBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 					{
 						if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
-							SDL_SetRenderDrawColor(engine->renderer, 255, 255, listBox->alpha, listBox->alpha);
+							SDL_SetRenderDrawColor(renderer, 255, 255, listBox->alpha, listBox->alpha);
 					}
 				}
 				else
-					SDL_SetRenderDrawColor(engine->renderer, 50, 50, 150, listBox->alpha);
+					SDL_SetRenderDrawColor(renderer, 50, 50, 150, listBox->alpha);
 			}
 			else
-				SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, listBox->alpha);
-			SDL_RenderFillRect(engine->renderer, &listBox->optionBoxes[i]);
+				SDL_SetRenderDrawColor(renderer, 255, 255, 255, listBox->alpha);
+			SDL_RenderFillRect(renderer, &listBox->optionBoxes[i]);
 			
-			SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, listBox->alpha);
-			SDL_RenderDrawRect(engine->renderer, &listBox->optionBoxes[i]);
+			SDL_SetRenderDrawColor(renderer, 0, 0, 0, listBox->alpha);
+			SDL_RenderDrawRect(renderer, &listBox->optionBoxes[i]);
 			SGE_RenderTexture(listBox->optionImages[i]);
 		}
 	}
@@ -2516,9 +2527,9 @@ void SGE_MinimizeButtonHandleEvents(SGE_MinimizeButton *minButton)
 {
 	int i = 0;
 	
-	if(engine->event.type == SDL_MOUSEBUTTONDOWN)
+	if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONDOWN)
 	{
-		if(engine->event.button.button == 1)
+		if(SGE_GetSDLEvent()->button.button == 1)
 		{
 			if(SGE_isMouseOver(&minButton->boundBox))
 			{
@@ -2531,9 +2542,9 @@ void SGE_MinimizeButtonHandleEvents(SGE_MinimizeButton *minButton)
 			}
 		}
 	}
-	else if(engine->event.type == SDL_MOUSEBUTTONUP)
+	else if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONUP)
 	{
-		if(engine->event.button.button == 1)
+		if(SGE_GetSDLEvent()->button.button == 1)
 		{
 			if(minButton->state == SGE_CONTROL_STATE_CLICKED)
 			{
@@ -2549,7 +2560,7 @@ void SGE_MinimizeButtonHandleEvents(SGE_MinimizeButton *minButton)
 			}
 		}
 	}
-	else if(engine->event.type == SDL_MOUSEMOTION)
+	else if(SGE_GetSDLEvent()->type == SDL_MOUSEMOTION)
 	{
 		if(minButton->state != SGE_CONTROL_STATE_CLICKED)
 		{
@@ -2582,26 +2593,26 @@ void SGE_MinimizeButtonRender(SGE_MinimizeButton *minButton)
 {
 	int i = 0;
 	
-	SDL_SetRenderDrawColor(engine->renderer, minButton->currentColor.r, minButton->currentColor.g, minButton->currentColor.b, minButton->parentPanel->alpha);
-	SDL_RenderFillRect(engine->renderer, &minButton->boundBox);
+	SDL_SetRenderDrawColor(renderer, minButton->currentColor.r, minButton->currentColor.g, minButton->currentColor.b, minButton->parentPanel->alpha);
+	SDL_RenderFillRect(renderer, &minButton->boundBox);
 	
 	/* Draw button image */
 	SGE_SetTextureAlpha(minButton->buttonImg, minButton->parentPanel->alpha);
 	SGE_RenderTexture(minButton->buttonImg);
 	
 	/* Draw button border */
-	SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, minButton->parentPanel->alpha);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, minButton->parentPanel->alpha);
 	if(SGE_isMouseOver(&minButton->boundBox))
 	{
-		SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, minButton->parentPanel->alpha);
+		SDL_SetRenderDrawColor(renderer, 225, 225, 225, minButton->parentPanel->alpha);
 		
 		for(i = minButton->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 		{
 			if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
-				SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, minButton->parentPanel->alpha);
+				SDL_SetRenderDrawColor(renderer, 0, 0, 0, minButton->parentPanel->alpha);
 		}
 	}
-	SDL_RenderDrawRect(engine->renderer, &minButton->boundBox);
+	SDL_RenderDrawRect(renderer, &minButton->boundBox);
 }
 
 SGE_WindowPanel *SGE_CreateWindowPanel(const char *title, int x, int y, int w, int h) 
@@ -2784,9 +2795,9 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 	}
 	
 	/* Handle left mouse button click for panel*/
-	if(engine->event.type == SDL_MOUSEBUTTONDOWN)
+	if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONDOWN)
 	{
-		if(engine->event.button.button == 1)
+		if(SGE_GetSDLEvent()->button.button == 1)
 		{
 			/* Set panel as active when clicked */
 			if(SGE_isMouseOver(&panel->border))
@@ -2817,8 +2828,8 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 							panel->isMoving = false;
 					}
 					
-					panel->move_dx = engine->mouse_x - panel->border.x;
-					panel->move_dy = engine->mouse_y - panel->border.y;
+					panel->move_dx = SGE_GetMouseX() - panel->border.x;
+					panel->move_dy = SGE_GetMouseY() - panel->border.y;
 
 					if(panel->isMinimizable)
 					{
@@ -2842,7 +2853,7 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 							panel->isResizing_vertical = false;
 					}
 					
-					panel->resize_origin_y = engine->mouse_y;
+					panel->resize_origin_y = SGE_GetMouseY();
 					panel->resize_origin_h = panel->border.h;
 				}
 			}
@@ -2859,7 +2870,7 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 							panel->isResizing_horizontal = false;
 					}
 					
-					panel->resize_origin_x = engine->mouse_x;
+					panel->resize_origin_x = SGE_GetMouseX();
 					panel->resize_origin_w = panel->border.w;
 				}
 			}
@@ -2875,7 +2886,7 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 						if(SGE_isMouseOver(&panels[i]->border))
 							panel->isScrolling_horizontal = false;
 					}
-					panel->horizontalScrollbar_move_dx = engine->mouse_x - panel->horizontalScrollbar.x;
+					panel->horizontalScrollbar_move_dx = SGE_GetMouseX() - panel->horizontalScrollbar.x;
 				}
 				
 				if(SGE_isMouseOver(&panel->horizontalScrollbarBG) && !SGE_isMouseOver(&panel->horizontalScrollbar))
@@ -2888,8 +2899,8 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 					}
 					if(panel->isScrolling_horizontal)
 					{
-						panel->horizontalScrollbar.x = engine->mouse_x - (panel->horizontalScrollbar.w / 2);
-						panel->horizontalScrollbar_move_dx = engine->mouse_x - panel->horizontalScrollbar.x;
+						panel->horizontalScrollbar.x = SGE_GetMouseX() - (panel->horizontalScrollbar.w / 2);
+						panel->horizontalScrollbar_move_dx = SGE_GetMouseX() - panel->horizontalScrollbar.x;
 					}
 				}
 			}
@@ -2905,7 +2916,7 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 						if(SGE_isMouseOver(&panels[i]->border))
 							panel->isScrolling_vertical = false;
 					}
-					panel->verticalScrollbar_move_dy = engine->mouse_y - panel->verticalScrollbar.y;
+					panel->verticalScrollbar_move_dy = SGE_GetMouseY() - panel->verticalScrollbar.y;
 				}
 				
 				if(SGE_isMouseOver(&panel->verticalScrollbarBG) && !SGE_isMouseOver(&panel->verticalScrollbar))
@@ -2918,15 +2929,15 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 					}
 					if(panel->isScrolling_vertical)
 					{
-						panel->verticalScrollbar.y = engine->mouse_y - (panel->verticalScrollbar.h / 2);
-						panel->verticalScrollbar_move_dy = engine->mouse_y - panel->verticalScrollbar.y;
+						panel->verticalScrollbar.y = SGE_GetMouseY() - (panel->verticalScrollbar.h / 2);
+						panel->verticalScrollbar_move_dy = SGE_GetMouseY() - panel->verticalScrollbar.y;
 					}
 				}
 			}
 		}
 	}
 	
-	else if(engine->event.type == SDL_MOUSEBUTTONUP)
+	else if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONUP)
 	{
 		if(panel->isMoving)
 		{
@@ -2954,7 +2965,7 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 		}
 	}
 	
-	else if(engine->event.type == SDL_MOUSEMOTION)
+	else if(SGE_GetSDLEvent()->type == SDL_MOUSEMOTION)
 	{
 		if(panel->isMoving)
 			panel->onMove(panel->onMove_data);
@@ -2968,14 +2979,14 @@ void SGE_WindowPanelUpdate(SGE_WindowPanel *panel)
 	/* Recalculate the window position when moved */
 	if(panel->isMoving)
 	{
-		SGE_WindowPanelSetPosition(panel, engine->mouse_x - panel->move_dx, engine->mouse_y - panel->move_dy);
+		SGE_WindowPanelSetPosition(panel, SGE_GetMouseX() - panel->move_dx, SGE_GetMouseY() - panel->move_dy);
 	}
 	
 	/* Recalculate the window width when resized horizontally */
 	if(panel->isResizing_horizontal)
 	{
 		panel->isMoving = false;
-		panel->border.w = panel->resize_origin_w - (panel->resize_origin_x - engine->mouse_x);
+		panel->border.w = panel->resize_origin_w - (panel->resize_origin_x - SGE_GetMouseX());
 		if(panel->border.w < panel->titleTextImg->w + panel->minimizeButton->boundBox.w + 50)
 		{
 			panel->border.w = panel->titleTextImg->w + panel->minimizeButton->boundBox.w + 50;
@@ -3003,7 +3014,7 @@ void SGE_WindowPanelUpdate(SGE_WindowPanel *panel)
 	if(panel->isResizing_vertical)
 	{
 		panel->isMoving = false;
-		panel->border.h = panel->resize_origin_h - (panel->resize_origin_y - engine->mouse_y);
+		panel->border.h = panel->resize_origin_h - (panel->resize_origin_y - SGE_GetMouseY());
 		if(panel->border.h < panel->titleRect.h + panel->horizontalScrollbarBG.h)
 		{
 			panel->border.h = panel->titleRect.h + panel->horizontalScrollbarBG.h;
@@ -3029,7 +3040,7 @@ void SGE_WindowPanelUpdate(SGE_WindowPanel *panel)
 	
 	if(panel->isScrolling_horizontal)
 	{
-		panel->horizontalScrollbar.x = engine->mouse_x - panel->horizontalScrollbar_move_dx;
+		panel->horizontalScrollbar.x = SGE_GetMouseX() - panel->horizontalScrollbar_move_dx;
 		if(panel->horizontalScrollbar.x < panel->horizontalScrollbarBG.x)
 			panel->horizontalScrollbar.x = panel->horizontalScrollbarBG.x;
 		if(panel->horizontalScrollbar.x + panel->horizontalScrollbar.w > panel->horizontalScrollbarBG.x + panel->horizontalScrollbarBG.w)
@@ -3041,7 +3052,7 @@ void SGE_WindowPanelUpdate(SGE_WindowPanel *panel)
 	
 	if(panel->isScrolling_vertical)
 	{
-		panel->verticalScrollbar.y = engine->mouse_y - panel->verticalScrollbar_move_dy;
+		panel->verticalScrollbar.y = SGE_GetMouseY() - panel->verticalScrollbar_move_dy;
 		if(panel->verticalScrollbar.y < panel->verticalScrollbarBG.y)
 			panel->verticalScrollbar.y = panel->verticalScrollbarBG.y;
 		if(panel->verticalScrollbar.y + panel->verticalScrollbar.h > panel->verticalScrollbarBG.y + panel->verticalScrollbarBG.h)
@@ -3062,24 +3073,24 @@ void SGE_WindowPanelRender(SGE_WindowPanel *panel)
 	int i = 0;
 	
 	/* Draw a rect that acts as a border and title bar */
-	SDL_SetRenderDrawBlendMode(engine->renderer, SDL_BLENDMODE_BLEND);
-	SDL_SetRenderDrawColor(engine->renderer, panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
-	SDL_RenderFillRect(engine->renderer, &panel->border);
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor(renderer, panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
+	SDL_RenderFillRect(renderer, &panel->border);
 	
 	/* Draw a white or black border around the panel */
 	if(panel->isActive)
 	{
-		SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, panel->alpha);
+		SDL_SetRenderDrawColor(renderer, 255, 255, 255, panel->alpha);
 	}
 	else
 	{
-		SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, panel->alpha);
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, panel->alpha);
 	}
-	SDL_RenderDrawRect(engine->renderer, &panel->border);
+	SDL_RenderDrawRect(renderer, &panel->border);
 	
 	/* Draw the actual background of the panel */
-	SDL_SetRenderDrawColor(engine->renderer, panel->backgroundColor.r, panel->backgroundColor.g, panel->backgroundColor.b, panel->alpha);
-	SDL_RenderFillRect(engine->renderer, &panel->background);
+	SDL_SetRenderDrawColor(renderer, panel->backgroundColor.r, panel->backgroundColor.g, panel->backgroundColor.b, panel->alpha);
+	SDL_RenderFillRect(renderer, &panel->background);
 	
 	/* Draw the panel title text */
 	SGE_SetTextureAlpha(panel->titleTextImg, panel->alpha);
@@ -3091,7 +3102,7 @@ void SGE_WindowPanelRender(SGE_WindowPanel *panel)
 	}
 	
 	/* Draw all the child controls */
-	SDL_RenderSetClipRect(engine->renderer, &panel->background);
+	SDL_RenderSetClipRect(renderer, &panel->background);
 	
 	for(i = 0; i < panel->buttonCount; i++)
 	{
@@ -3123,82 +3134,82 @@ void SGE_WindowPanelRender(SGE_WindowPanel *panel)
 		SGE_ListBoxRender(panel->listBoxes[i]);
 	}
 	
-	SDL_RenderSetClipRect(engine->renderer, NULL);
-	SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, 0);
-	SDL_RenderDrawPoint(engine->renderer, 0, 0);
+	SDL_RenderSetClipRect(renderer, NULL);
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 0);
+	SDL_RenderDrawPoint(renderer, 0, 0);
 	
 	/* Draw Horizontal Scrollbar */
 	if(panel->horizontalScrollbarEnabled)
 	{
-		SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, panel->alpha);
-		SDL_RenderFillRect(engine->renderer, &panel->horizontalScrollbarBG);
-		SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, panel->alpha);
-		SDL_RenderDrawRect(engine->renderer, &panel->horizontalScrollbarBG);
+		SDL_SetRenderDrawColor(renderer, 255, 255, 255, panel->alpha);
+		SDL_RenderFillRect(renderer, &panel->horizontalScrollbarBG);
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, panel->alpha);
+		SDL_RenderDrawRect(renderer, &panel->horizontalScrollbarBG);
 		
-		SDL_SetRenderDrawColor(engine->renderer, panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
-		SDL_RenderFillRect(engine->renderer, &panel->horizontalScrollbar);
+		SDL_SetRenderDrawColor(renderer, panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
+		SDL_RenderFillRect(renderer, &panel->horizontalScrollbar);
 		
-		SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, panel->alpha);
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, panel->alpha);
 		if(SGE_isMouseOver(&panel->horizontalScrollbar))
 		{
-			SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, panel->alpha);
+			SDL_SetRenderDrawColor(renderer, 225, 225, 225, panel->alpha);
 			
 			for(i = panel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
-					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, panel->alpha);
+					SDL_SetRenderDrawColor(renderer, 0, 0, 0, panel->alpha);
 			}
 		}
-		SDL_RenderDrawRect(engine->renderer, &panel->horizontalScrollbar);
+		SDL_RenderDrawRect(renderer, &panel->horizontalScrollbar);
 	}
 	
 	/* Draw Vertical Scrollbar */
 	if(panel->verticalScrollbarEnabled)
 	{
-		SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, panel->alpha);
-		SDL_RenderFillRect(engine->renderer, &panel->verticalScrollbarBG);
-		SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, panel->alpha);
-		SDL_RenderDrawRect(engine->renderer, &panel->verticalScrollbarBG);
+		SDL_SetRenderDrawColor(renderer, 255, 255, 255, panel->alpha);
+		SDL_RenderFillRect(renderer, &panel->verticalScrollbarBG);
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, panel->alpha);
+		SDL_RenderDrawRect(renderer, &panel->verticalScrollbarBG);
 		
-		SDL_SetRenderDrawColor(engine->renderer, panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
-		SDL_RenderFillRect(engine->renderer, &panel->verticalScrollbar);
+		SDL_SetRenderDrawColor(renderer, panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
+		SDL_RenderFillRect(renderer, &panel->verticalScrollbar);
 		
-		SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, panel->alpha);
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, panel->alpha);
 		if(SGE_isMouseOver(&panel->verticalScrollbar))
 		{
-			SDL_SetRenderDrawColor(engine->renderer, 225, 225, 225, panel->alpha);
+			SDL_SetRenderDrawColor(renderer, 225, 225, 225, panel->alpha);
 			
 			for(i = panel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
-					SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, panel->alpha);
+					SDL_SetRenderDrawColor(renderer, 0, 0, 0, panel->alpha);
 			}
 		}
-		SDL_RenderDrawRect(engine->renderer, &panel->verticalScrollbar);
+		SDL_RenderDrawRect(renderer, &panel->verticalScrollbar);
 	}
 	
 	if(showControlBounds)
 	{
 		/* Draw Resize Control Bars */
-		SDL_SetRenderDrawColor(engine->renderer, 255, 0, 255, panel->alpha);
-		SDL_RenderDrawRect(engine->renderer, &panel->resizeBar_horizontal);
-		SDL_SetRenderDrawColor(engine->renderer, 0, 255, 0, panel->alpha);
-		SDL_RenderDrawRect(engine->renderer, &panel->resizeBar_vertical);
+		SDL_SetRenderDrawColor(renderer, 255, 0, 255, panel->alpha);
+		SDL_RenderDrawRect(renderer, &panel->resizeBar_horizontal);
+		SDL_SetRenderDrawColor(renderer, 0, 255, 0, panel->alpha);
+		SDL_RenderDrawRect(renderer, &panel->resizeBar_vertical);
 		
 		/* Draw the panel center point */
 		SDL_Rect centerRect = {panel->bgGlobalCenter.x - 2, panel->bgGlobalCenter.y - 2, 4, 4};
-		SDL_SetRenderDrawColor(engine->renderer, 255, 255, 255, panel->alpha);
-		SDL_RenderFillRect(engine->renderer, &centerRect);
-		SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, panel->alpha);
-		SDL_RenderDrawRect(engine->renderer, &centerRect);
+		SDL_SetRenderDrawColor(renderer, 255, 255, 255, panel->alpha);
+		SDL_RenderFillRect(renderer, &centerRect);
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, panel->alpha);
+		SDL_RenderDrawRect(renderer, &centerRect);
 		
 		/* Draw panel MCR */
-		SDL_SetRenderDrawColor(engine->renderer, 0, 255, 0, panel->alpha);
-		SDL_RenderDrawRect(engine->renderer, &panel->masterControlRect);
+		SDL_SetRenderDrawColor(renderer, 0, 255, 0, panel->alpha);
+		SDL_RenderDrawRect(renderer, &panel->masterControlRect);
 		
 		/* Draw panel boundbox */
-		SDL_SetRenderDrawColor(engine->renderer, 255, 0, 255, panel->alpha);
-		SDL_RenderDrawRect(engine->renderer, &panel->boundBox);
+		SDL_SetRenderDrawColor(renderer, 255, 0, 255, panel->alpha);
+		SDL_RenderDrawRect(renderer, &panel->boundBox);
 	}
 }
 

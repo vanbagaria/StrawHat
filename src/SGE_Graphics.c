@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+static SDL_Renderer *renderer = NULL;
+
 /*******************
  * Color constants
  *******************/
@@ -32,46 +34,46 @@ const SDL_Color SGE_COLOR_PURPLE       = {163,  73, 164, 255};
  * Rendering Functions
  ***********************/
 
-void SGE_SetBackgroundColor(SDL_Color color)
+void SGE_Graphics_UpdateSDLRenderer()
 {
-	SGE_GetEngineData()->defaultScreenClearColor = color;
+	renderer = SGE_GetSDLRenderer();
 }
 
 void SGE_ClearScreenRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	SDL_SetRenderDrawColor(SGE_GetEngineData()->renderer, r, g, b, a);
-	SDL_RenderClear(SGE_GetEngineData()->renderer);
+	SDL_SetRenderDrawColor(renderer, r, g, b, a);
+	SDL_RenderClear(renderer);
 }
 
 void SGE_ClearScreen(SDL_Color color)
 {
-	SDL_SetRenderDrawColor(SGE_GetEngineData()->renderer, color.r, color.g, color.b, color.a);
-	SDL_RenderClear(SGE_GetEngineData()->renderer);
+	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+	SDL_RenderClear(renderer);
 }
 
 void SGE_SetDrawColorRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	SDL_SetRenderDrawColor(SGE_GetEngineData()->renderer, r, g, b, a);
+	SDL_SetRenderDrawColor(renderer, r, g, b, a);
 }
 
 void SGE_SetDrawColor(SDL_Color color)
 {
-	SDL_SetRenderDrawColor(SGE_GetEngineData()->renderer, color.r, color.g, color.b, color.a);
+	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 }
 
 void SGE_DrawRect(SDL_Rect *rect)
 {
-	SDL_RenderDrawRect(SGE_GetEngineData()->renderer, rect);
+	SDL_RenderDrawRect(renderer, rect);
 }
 
 void SGE_DrawFillRect(SDL_Rect *rect)
 {
-	SDL_RenderFillRect(SGE_GetEngineData()->renderer, rect);
+	SDL_RenderFillRect(renderer, rect);
 }
 
 void SGE_DrawLine(int x1, int y1, int x2, int y2)
 {
-	SDL_RenderDrawLine(SGE_GetEngineData()->renderer, x1, y1, x2, y2);
+	SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
 }
 
 /****************
@@ -143,7 +145,7 @@ SGE_Texture* SGE_LoadTexture(const char *path)
 	gTexture->clipRect.w = gTexture->w;
 	gTexture->clipRect.h = gTexture->h;
 	
-	gTexture->texture = SDL_CreateTextureFromSurface(SGE_GetEngineData()->renderer, tempSurface);
+	gTexture->texture = SDL_CreateTextureFromSurface(renderer, tempSurface);
 	SDL_FreeSurface(tempSurface);
 	if(gTexture->texture == NULL)
 	{
@@ -194,7 +196,7 @@ SGE_Texture* SGE_CreateTextureFromText(const char *text, TTF_Font *font, SDL_Col
 	gTexture->clipRect.w = gTexture->w;
 	gTexture->clipRect.h = gTexture->h;
 	
-	gTexture->texture = SDL_CreateTextureFromSurface(SGE_GetEngineData()->renderer, tempSurface);
+	gTexture->texture = SDL_CreateTextureFromSurface(renderer, tempSurface);
 	SDL_FreeSurface(tempSurface);
 	if(gTexture->texture == NULL)
 	{
@@ -242,7 +244,7 @@ void SGE_UpdateTextureFromText(SGE_Texture *gTexture, const char *text, TTF_Font
 	gTexture->clipRect.w = gTexture->w;
 	gTexture->clipRect.h = gTexture->h;
 	
-	gTexture->texture = SDL_CreateTextureFromSurface(SGE_GetEngineData()->renderer, tempSurface);
+	gTexture->texture = SDL_CreateTextureFromSurface(renderer, tempSurface);
 	SDL_FreeSurface(tempSurface);
 	if(gTexture->texture == NULL)
 	{
@@ -270,7 +272,7 @@ void SGE_RenderTexture(SGE_Texture *gTexture)
 	gTexture->destRect.y = gTexture->y;
 	gTexture->destRect.w = gTexture->w;
 	gTexture->destRect.h = gTexture->h;
-	SDL_RenderCopyEx(SGE_GetEngineData()->renderer, gTexture->texture, &gTexture->clipRect, &gTexture->destRect, gTexture->rotation, NULL, gTexture->flip);
+	SDL_RenderCopyEx(renderer, gTexture->texture, &gTexture->clipRect, &gTexture->destRect, gTexture->rotation, NULL, gTexture->flip);
 }
 
 void SGE_SetTextureColor(SGE_Texture *gTexture, Uint8 red, Uint8 green, Uint8 blue)

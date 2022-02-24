@@ -30,7 +30,6 @@ extern const SDL_Color SGE_COLOR_PURPLE;
  * Rendering Functions
  ***********************/
 
-void SGE_SetBackgroundColor(SDL_Color color);
 void SGE_ClearScreenRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 void SGE_ClearScreen(SDL_Color color);
 void SGE_SetDrawColorRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
@@ -38,6 +37,12 @@ void SGE_SetDrawColor(SDL_Color color);
 void SGE_DrawRect(SDL_Rect *rect);
 void SGE_DrawFillRect(SDL_Rect *rect);
 void SGE_DrawLine(int x1, int y1, int x2, int y2);
+
+/**
+ * \brief Updates the SDL_Renderer to be used by SGE_Graphics.c
+ * 
+ */
+void SGE_Graphics_UpdateSDLRenderer();
 
 /****************
  * SGE_Texture

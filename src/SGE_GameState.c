@@ -69,6 +69,28 @@ SGE_GUI_ControlList *SGE_GetStateGUIList(const char *name)
 	return &currentState->guiList;
 }
 
+/* Updates the string containing the list of registered states */
+void SGE_PrintStates()
+{
+	SGE_StateList *current = stateList;
+	if(current == NULL)
+	{
+		//SGE_LogPrintLine(SGE_LOG_DEBUG, "Registered SGE States: {}");
+		return;
+	}
+	
+	sprintf(listString, "{");
+	while(current->next != NULL)
+	{
+		strcat(listString, current->state.name);
+		strcat(listString, ", ");
+		current = current->next;
+	}
+	strcat(listString, current->state.name);
+	strcat(listString, "}");
+	//SGE_LogPrintLine(SGE_LOG_DEBUG, "Registered SGE States: %s", listString);
+}
+
 const char *SGE_GetStateNames()
 {
 	SGE_PrintStates();
@@ -124,6 +146,7 @@ void SGE_SwitchToState(const char *nextStateName, bool quitCurrent)
 	switchQuitCurrent = quitCurrent;
 }
 
+/* Internally switches the current state */
 void SGE_SwitchStates()
 {
 	if(nextSwitchState == NULL)
@@ -145,6 +168,35 @@ void SGE_SwitchStates()
 	}
 
 	nextSwitchState = NULL;
+}
+
+/* 
+* Sets a state's loaded flag.
+* The loaded flag indicates whether a registered state's memory has been loaded or freed with init() or quit() respectively.
+*/
+void SGE_SetStateLoaded(const char *name, bool loaded)
+{
+	SGE_StateList *state = SGE_GetStateAsList(name);
+	if(state != NULL)
+	{
+		state->loaded = loaded;
+	}
+	else
+	{
+		SGE_LogPrintLine(SGE_LOG_WARNING, "%s: \"%s\" not in state list!", __FUNCTION__, name);
+	}
+}
+
+bool SGE_StateIsLoaded(const char *name)
+{
+	SGE_StateList *state = SGE_GetStateAsList(name);
+	if(state != NULL)
+	{
+		return state->loaded;
+	}
+
+	SGE_LogPrintLine(SGE_LOG_WARNING, "%s: \"%s\" not in state list!", __FUNCTION__, name);
+	return false;
 }
 
 void SGE_InitState(SGE_GameState *state)
@@ -171,53 +223,6 @@ void SGE_QuitState(SGE_GameState *state)
 	SGE_SetStateLoaded(state->name, false);
 	SGE_LogPrintLine(SGE_LOG_INFO, "Finished Quitting State.");
 	SGE_printf(SGE_LOG_DEBUG, "\n");
-}
-
-/* Prints the list of currently registered game states to debug output */
-void SGE_PrintStates()
-{
-	SGE_StateList *current = stateList;
-	if(current == NULL)
-	{
-		//SGE_LogPrintLine(SGE_LOG_DEBUG, "Registered SGE States: {}");
-		return;
-	}
-	
-	sprintf(listString, "{");
-	while(current->next != NULL)
-	{
-		strcat(listString, current->state.name);
-		strcat(listString, ", ");
-		current = current->next;
-	}
-	strcat(listString, current->state.name);
-	strcat(listString, "}");
-	//SGE_LogPrintLine(SGE_LOG_DEBUG, "Registered SGE States: %s", listString);
-}
-
-void SGE_SetStateLoaded(const char *name, bool loaded)
-{
-	SGE_StateList *state = SGE_GetStateAsList(name);
-	if(state != NULL)
-	{
-		state->loaded = loaded;
-	}
-	else
-	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "%s: \"%s\" not in state list!", __FUNCTION__, name);
-	}
-}
-
-bool SGE_StateIsLoaded(const char *name)
-{
-	SGE_StateList *state = SGE_GetStateAsList(name);
-	if(state != NULL)
-	{
-		return state->loaded;
-	}
-
-	SGE_LogPrintLine(SGE_LOG_WARNING, "%s: \"%s\" not in state list!", __FUNCTION__, name);
-	return false;
 }
 
 void SGE_AddState(const char *name, bool (*init)(), void (*quit)(), void (*handleEvents)(), void (*update)(), void (*render)())
@@ -273,6 +278,7 @@ SGE_GameState *SGE_GetState(const char *name)
 	return &state->state;
 }
 
+/* Internally frees the memory for all registered states that are loaded */
 void SGE_FreeLoadedStates()
 {
 	SGE_StateList *current = stateList;
@@ -301,6 +307,8 @@ void SGE_FreeStateList()
 	{
 		return;
 	}
+
+	SGE_FreeLoadedStates();
 
 	SGE_StateList *tempNext = current->next;
 	while(current != NULL)

@@ -299,7 +299,6 @@ void SGE_Run(const char *startStateName)
 	SGE_QuitState(&currentState);
 	SGE_SetStateFunctions(&currentState, "SGE", NULL, NULL, NULL, NULL, NULL);
 	
-	SGE_FreeLoadedStates();
 	SGE_FreeStateList();
 	SGE_GUI_Quit();
 	

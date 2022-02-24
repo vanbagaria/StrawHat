@@ -4,18 +4,31 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-/* Internally used state structure */
+/**
+ * \brief Internally used game state structure
+ * 
+ */
 typedef struct
 {
-	char name[20];
-	bool (*init)();
-	void (*quit)();
-	void (*handleEvents)();
-	void (*update)();
-	void (*render)();
+	char name[20]; /**< The unique name of the state */
+	bool (*init)(); /**< The state init function */
+	void (*quit)(); /**< The state quit function */
+	void (*handleEvents)(); /**< The state event handling function */
+	void (*update)(); /**< The state update function */
+	void (*render)(); /**< The state render function */
 } SGE_GameState;
 
-/* Fills an SGE_GameState structure */
+/**
+ * \brief Fills an SGE_GameState structure
+ * 
+ * \param state Address of the SGE_GameState structure to be filled.
+ * \param name The name of the game state.
+ * \param init Address of the initialization function for the state.
+ * \param quit Address of the clean up function for the state.
+ * \param handleEvents Address of the event handling function for the state.
+ * \param update Address of the frame update function for the state.
+ * \param render Address of the frame render function for the state.
+ */
 void SGE_SetStateFunctions(
 	SGE_GameState *state, const char *name,
 	bool (*init)(),
@@ -24,57 +37,97 @@ void SGE_SetStateFunctions(
 	void (*update)(),
 	void (*render)());
 
-/* 
-* Register a new state and add it to the state list.
-* A state is a named collection of five functions that act as a sub-application.
-* Only one state is active as the current state of the engine.
-* The current state can be switched using the SGE_SwitchToState() function.
-*/
+/**
+ * \brief Register a new state and add it to the state list.
+ * 
+ * A state is a named collection of five functions that act as a sub-application.
+ * Only one state is active as the current state of the engine.
+ * The current state can be switched using the SGE_SwitchToState() function.
+ * 
+ * \param name The name of the game state.
+ * \param init The initialization function for the state.
+ * \param quit The clean up function for the state.
+ * \param handleEvents The event handling function for the state.
+ * \param update The frame update function for the state.
+ * \param render The frame render function for the state.
+ */
 void SGE_AddState(const char *name, bool (*init)(), void (*quit)(), void (*handleEvents)(), void (*update)(), void (*render)());
 
-/* 
-* Switch the current state to another state while freeing the current state's memory
-* or by keeping the current state in memory.
-*/
+/**
+ * \brief Switch the current game state.
+ * 
+ * Switches the current state to another state while freeing the current state,
+ * or by keeping the current state loaded. Keeping a state loaded will allow fast
+ * switching to that state as the init function will be skipped for a loaded state.
+ * It is safe to never quit a state before switching, since all loaded states are quit
+ * when the application exits.
+ * 
+ * \param nextStateName The name of the state to switch to.
+ * \param quitCurrent  Whether to call the current state's quit function before switching.
+ */
 void SGE_SwitchToState(const char *nextStateName, bool quitCurrent);
 
-/* Internally switches the current state */
-void SGE_SwitchStates();
-
+/**
+ * \brief Calls a state's init function and sets it's loaded flag to true on success.
+ * 
+ * Calls SGE_Quit() if the state failed to load.
+ * 
+ * \param state The address of the state to initialize.
+ */
 void SGE_InitState(SGE_GameState *state);
+
+/**
+ * \brief Calls a state's quit function and sets it's loaded flag to false.
+ * 
+ * \param state The address of the state to quit.
+ */
 void SGE_QuitState(SGE_GameState *state);
 
-
-/* Get the current state as an internal SGE_GameState */
+/**
+ * \brief Get the internal SGE_GameState structure for a registered state.
+ * 
+ * \param name The name of a registered game state.
+ * \return The address of the SGE_GameState structure of the registered state.
+ */
 SGE_GameState *SGE_GetState(const char *name);
 
-/* Gets a string representing the list of registered states */
+/**
+ * \brief Returns a string containing a list of names of all registered states.
+ * 
+ * \return String of names of all registered states.
+ */
 const char *SGE_GetStateNames();
 
-/* Updates the string representing the list of registered states */
-void SGE_PrintStates();
-
-/* Gets the total number of registered states */
+/**
+ * \brief Gets the total number of registered states.
+ * 
+ * \return Number of registered states.
+ */
 int SGE_GetStateCount();
 
-/* 
-* Internally sets a state's loaded flag.
-* The loaded flag indicates whether a registered state's memory has been loaded or freed with init() or quit() respectively.
-*/
-void SGE_SetStateLoaded(const char *name, bool loaded);
-
-/* Returns whether a state's memory has been loaded or freed with init() or quit() respectively. */
+/**
+ * \brief Returns whether a state has been loaded or freed.
+ * 
+ * \param name The name of a registered state.
+ * \return true if the state's init function has been successfully called,
+ *         false if the state's quit function has been called.
+ */
 bool SGE_StateIsLoaded(const char *name);
 
-/* Internally frees the memory for all registered states that are loaded */
-void SGE_FreeLoadedStates();
-
-/* Free's the actual list that maintains the registered states */
+/**
+ * \brief Free's the list of all registered states and call's their quit functions.
+ * 
+ */
 void SGE_FreeStateList();
 
 typedef struct SGE_GUI_ControlList SGE_GUI_ControlList; // SGE_GUI.h
 
-/* Returns the list of GUI controls for a particular state  */
+/**
+ * \brief Returns the SGE_GUI_ControlList structure for a registered state.
+ * 
+ * \param name The name of the registered state whose GUI control list should be returned.
+ * \return The address of the GUI control list of the registered state.
+ */
 SGE_GUI_ControlList *SGE_GetStateGUIList(const char *name);
 
 #endif

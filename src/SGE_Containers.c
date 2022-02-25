@@ -75,13 +75,14 @@ void *SGE_LLGetLast(SGE_LinkedList *list)
 {
     if(list == NULL)
     {
-        SGE_LogPrintLine(SGE_LOG_WARNING, "Attempt access NULL linked list!");
-        return;
+        SGE_LogPrintLine(SGE_LOG_WARNING, "Attempt to access NULL linked list!");
+        return NULL;
     }
     
     SGE_LLNode *current = list->head;
     if(current == NULL)
     {
+        SGE_LogPrintLine(SGE_LOG_WARNING, "Attempt to access empty linked list!");
         return NULL;
     }
     
@@ -103,6 +104,12 @@ void SGE_LLPop(SGE_LinkedList *list)
         return;
     }
     
+    if(list->head == NULL)
+    {
+        SGE_LogPrintLine(SGE_LOG_WARNING, "Attempt to pop on empty linked list!");
+        return;
+    }
+
     if(list->head->next == NULL)
     {
         free(list->head);
@@ -130,6 +137,12 @@ void SGE_LLPopFront(SGE_LinkedList *list)
     if(list == NULL)
     {
         SGE_LogPrintLine(SGE_LOG_WARNING, "Attempt to pop on NULL linked list!");
+        return;
+    }
+    
+    if(list->head == NULL)
+    {
+        SGE_LogPrintLine(SGE_LOG_WARNING, "Attempt to pop on empty linked list!");
         return;
     }
 

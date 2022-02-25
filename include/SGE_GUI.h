@@ -175,6 +175,7 @@ typedef struct SGE_TextInputBox
 	int lastTextWidth;
 	int currentCharWidth;
 	SGE_LinkedList *characterWidthStack;
+	int lastSpacePosition;
 	
 	void (*onEnable)(void *data);
 	void *onEnable_data;
@@ -325,6 +326,7 @@ SGE_CheckBox *SGE_CreateCheckBox(int x, int y, struct SGE_WindowPanel *panel);
 void SGE_CheckBoxSetPosition(SGE_CheckBox *checkBox, int x, int y);
 
 SGE_TextLabel *SGE_CreateTextLabel(const char *text, int x, int y, SDL_Color color, struct SGE_WindowPanel *panel);
+SGE_TextLabel *SGE_CreateTextLabelf(int x, int y, SDL_Color color, struct SGE_WindowPanel *panel, const char *format, ...);
 SGE_TextLabel *SGE_CreateTextLabelCustom(const char *text, int x, int y, SDL_Color color, TTF_Font *font, struct SGE_WindowPanel *panel);
 void SGE_TextLabelSetPosition(SGE_TextLabel *label, int x, int y);
 void SGE_TextLabelSetText(SGE_TextLabel *label, const char *text);

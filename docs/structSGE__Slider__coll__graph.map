@@ -1,0 +1,13 @@
+<map id="SGE_Slider" name="SGE_Slider">
+<area shape="rect" id="node1" title=" " alt="" coords="11,280,103,307"/>
+<area shape="rect" id="node2" href="$structSGE__WindowPanel.html" title=" " alt="" coords="239,391,381,417"/>
+<area shape="rect" id="node3" href="$structSGE__ListBox.html" title=" " alt="" coords="597,481,700,508"/>
+<area shape="rect" id="node5" href="$structSGE__CheckBox.html" title=" " alt="" coords="589,368,709,395"/>
+<area shape="rect" id="node6" href="$structSGE__TextLabel.html" title=" " alt="" coords="590,605,707,632"/>
+<area shape="rect" id="node7" href="$structSGE__MinimizeButton.html" title=" " alt="" coords="569,729,728,756"/>
+<area shape="rect" id="node8" href="$structSGE__TextInputBox.html" title=" " alt="" coords="579,237,719,264"/>
+<area shape="rect" id="node11" href="$structSGE__Button.html" title=" " alt="" coords="599,131,698,157"/>
+<area shape="rect" id="node4" href="$structSGE__Texture.html" title=" " alt="" coords="5,497,108,524"/>
+<area shape="rect" id="node9" href="$structSGE__LinkedList.html" title=" " alt="" coords="250,44,370,71"/>
+<area shape="rect" id="node10" href="$structSGE__LLNode.html" title=" " alt="" coords="5,44,108,71"/>
+</map>

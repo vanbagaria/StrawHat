@@ -1,0 +1,25 @@
+var SGE__GameState_8c =
+[
+    [ "SGE_StateList", "structSGE__StateList.html", "structSGE__StateList" ],
+    [ "SGE_StateList", "SGE__GameState_8c.html#aca3356ce17508059f182e0e8b51a2b2d", null ],
+    [ "SGE_AddState", "SGE__GameState_8c.html#a4dccdd2e44f87a75b334301be0c2935c", null ],
+    [ "SGE_FallbackHandleEvents", "SGE__GameState_8c.html#a06250bbf35d5e23635f0f495bfae7a8b", null ],
+    [ "SGE_FallbackInit", "SGE__GameState_8c.html#a70e2c77f0b6e5f3ddeac2aeae9b5bffe", null ],
+    [ "SGE_FallbackQuit", "SGE__GameState_8c.html#ac655f8281f1dc25ea4fee038f4496d09", null ],
+    [ "SGE_FallbackRender", "SGE__GameState_8c.html#a395418752222243305efd48495ef49a0", null ],
+    [ "SGE_FallbackUpdate", "SGE__GameState_8c.html#a8e38d1318f60ccabcf4c420a2ce427a2", null ],
+    [ "SGE_FreeLoadedStates", "SGE__GameState_8c.html#a57411c2ac3435eda82c95aaa863da265", null ],
+    [ "SGE_FreeStateList", "SGE__GameState_8c.html#ab8b893a86381d042baf17b5691c6cf0f", null ],
+    [ "SGE_GetState", "SGE__GameState_8c.html#a4a2ac392fbd45cf1d433ff8ef084ccd6", null ],
+    [ "SGE_GetStateCount", "SGE__GameState_8c.html#a1028207430403fb946eb1fd29840cef2", null ],
+    [ "SGE_GetStateGUIList", "SGE__GameState_8c.html#a145a1989548f86f7a634770ce158cf9c", null ],
+    [ "SGE_GetStateNames", "SGE__GameState_8c.html#a41313fdfaba340eec2c2892ccedf6eec", null ],
+    [ "SGE_InitState", "SGE__GameState_8c.html#a5ad02af8e440178df59bb02821188e4a", null ],
+    [ "SGE_PrintStates", "SGE__GameState_8c.html#a924b6aa6a875f6e48221158ac10144bd", null ],
+    [ "SGE_QuitState", "SGE__GameState_8c.html#a70fb5922d012526290f497e81683eb8f", null ],
+    [ "SGE_SetStateFunctions", "SGE__GameState_8c.html#ab2e75ff4e887fa2a517cfccc6778215d", null ],
+    [ "SGE_SetStateLoaded", "SGE__GameState_8c.html#a2585653520c5d294c884bcb85b1961ee", null ],
+    [ "SGE_StateIsLoaded", "SGE__GameState_8c.html#a50a62ba2163b6cb804bc39d81e3aec13", null ],
+    [ "SGE_SwitchStates", "SGE__GameState_8c.html#aa0985b405300f937972315258d5dc7b2", null ],
+    [ "SGE_SwitchToState", "SGE__GameState_8c.html#af59d1a50fad710136655d2450eababd7", null ]
+];

@@ -41,10 +41,10 @@ static int screenWidth  = 0;
 static int screenHeight = 0;
 
 /* Default engine font */
-TTF_Font *defaultFont;
+static TTF_Font *defaultFont;
 
 /* Default background fill color */
-SDL_Color defaultScreenClearColor;
+static SDL_Color defaultScreenClearColor;
 
 static unsigned int randSeed = 0;
 

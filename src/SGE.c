@@ -61,6 +61,14 @@ static unsigned int lastFrameTime  = 0;
 static bool frameRateCap = false;
 static double deltaTime = 0;
 
+/**
+ * \brief Updates the SDL_Renderer to be used by SGE_Graphics.c
+ * 
+ * This function is defined in SGE_Graphics.c, it is called whenever the SDL renderer
+ * is created, so the graphics functions can have access to the renderer.
+ */
+void SGE_Graphics_UpdateSDLRenderer();
+
 SDL_Renderer *SGE_GetSDLRenderer()
 {
 	return renderer;
@@ -387,7 +395,6 @@ void SGE_ToggleVsync()
 	SDL_SetRenderDrawColor(renderer, drawColor.r, drawColor.g, drawColor.b, drawColor.a);
 
 	SGE_Graphics_UpdateSDLRenderer();
-	SGE_GUI_UpdateSDLRenderer();
 	
 	/* Reinitialize the GUI and the current state */
 	SGE_GUI_Init();

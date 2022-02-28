@@ -374,12 +374,6 @@ void SGE_WindowPanelSetPositionNextTo(SGE_WindowPanel *panel, SDL_Rect targetBou
 
 
 /**
- * \brief Updates the SDL_Renderer to be used by SGE_GUI.c
- * 
- */
-void SGE_GUI_UpdateSDLRenderer();
-
-/**
  * \brief Updates the control list to be used by SGE GUI functions.
  * 
  * This function is automatically called by SGE_SwitchStates() after a state switch is triggered

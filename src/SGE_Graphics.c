@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static SDL_Renderer *renderer = NULL;
-
 /*******************
  * Color constants
  *******************/
@@ -30,14 +28,24 @@ const SDL_Color SGE_COLOR_ORANGE       = {255, 127,   0, 255};
 const SDL_Color SGE_COLOR_INDIGO       = { 63,  72, 204, 255};
 const SDL_Color SGE_COLOR_PURPLE       = {163,  73, 164, 255};
 
-/***********************
- * Rendering Functions
- ***********************/
+/**
+ * \brief The SDL renderer used by all graphics functions.
+ * 
+ */
+static SDL_Renderer *renderer = NULL;
 
+/**
+ * \brief Gets the SDL_Renderer from SGE.c
+ * 
+ */
 void SGE_Graphics_UpdateSDLRenderer()
 {
 	renderer = SGE_GetSDLRenderer();
 }
+
+/***********************
+ * Rendering Functions
+ ***********************/
 
 void SGE_ClearScreenRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
@@ -61,19 +69,34 @@ void SGE_SetDrawColor(SDL_Color color)
 	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 }
 
-void SGE_DrawRect(SDL_Rect *rect)
+void SGE_SetDrawBlendMode(SDL_BlendMode mode)
 {
-	SDL_RenderDrawRect(renderer, rect);
+	SDL_SetRenderDrawBlendMode(renderer, mode);
 }
 
-void SGE_DrawFillRect(SDL_Rect *rect)
+void SGE_SetDrawClipRect(const SDL_Rect *rect)
 {
-	SDL_RenderFillRect(renderer, rect);
+	SDL_RenderSetClipRect(renderer, rect);
+}
+
+void SGE_DrawPoint(int x, int y)
+{
+	SDL_RenderDrawPoint(renderer, x, y);
 }
 
 void SGE_DrawLine(int x1, int y1, int x2, int y2)
 {
 	SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
+}
+
+void SGE_DrawRect(const SDL_Rect *rect)
+{
+	SDL_RenderDrawRect(renderer, rect);
+}
+
+void SGE_DrawFillRect(const SDL_Rect *rect)
+{
+	SDL_RenderFillRect(renderer, rect);
 }
 
 /****************

@@ -1,7 +1,7 @@
 #ifndef __SGE_AUDIO_H__
 #define __SGE_AUDIO_H__
 
-#include <SDL2/SDL_mixer.h>
+#include "SDL_mixer.h"
 
 /* Represents a small sound effect played once or looped a few times */
 typedef Mix_Chunk SGE_Sfx;

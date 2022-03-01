@@ -1,8 +1,7 @@
 #ifndef __SGE_H__
 #define __SGE_H__
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
+#include "SDL.h"
 #include <stdbool.h>
 
 #include "SGE_GameState.h"

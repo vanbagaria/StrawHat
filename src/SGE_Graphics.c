@@ -2,7 +2,7 @@
 #include "SGE.h"
 #include "SGE_Logger.h"
 
-#include <SDL2/SDL_image.h>
+#include "SDL_image.h"
 
 #include <stdlib.h>
 #include <stdio.h>

@@ -1,6 +1,6 @@
 #include "SGE_Math.h"
 #include <stdlib.h>
-#include <SDL2/SDL.h>
+#include "SDL.h"
 
 int SGE_MathRandRangeInt(int lowerRange, int higherRange)
 {

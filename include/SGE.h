@@ -20,17 +20,25 @@ int SGE_GetScreenWidth();
 int SGE_GetScreenHeight();
 int SGE_GetScreenCenterX();
 int SGE_GetScreenCenterY();
-bool SGE_KeyIsPressed(SDL_Scancode scancode);
-SDL_Point SGE_GetMousePosition();
 int SGE_GetMouseX();
 int SGE_GetMouseY();
+SDL_Point SGE_GetMousePosition();
+bool SGE_KeyIsPressed(SDL_Scancode scancode);
 double SGE_GetDeltaTime();
 
 SGE_GameState *SGE_GetCurrentState();
 SDL_Renderer *SGE_GetSDLRenderer();
 SDL_Event *SGE_GetSDLEvent();
 
+/**
+ * \brief Checks if the current mouse cursor position is inside a given rectangle.
+ * 
+ * \param rect The rectangle for which to check if the mouse cursor is inside.
+ * \return true if mouse cursor is inside rect,
+ *         false otherwise.
+ */
+bool SGE_MouseInRect(const SDL_Rect *rect);
+
 bool SGE_CheckRectsCollision(const SDL_Rect *r1, const SDL_Rect *r2);
-bool SGE_isMouseOver(SDL_Rect *rect);
 
 #endif

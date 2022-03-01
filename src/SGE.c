@@ -449,16 +449,11 @@ bool SGE_CheckRectsCollision(const SDL_Rect *r1, const SDL_Rect *r2)
 	return false;
 }
 
-/*
- * Checks for collision between a rectangle and the current mouse cursor position.
-*/
-bool SGE_isMouseOver(SDL_Rect *rect)
+bool SGE_MouseInRect(const SDL_Rect *rect)
 {
-	/* Can be replaced with SDL_PointInRect() */
-	if(mousePosition.x > rect->x && mousePosition.x < (rect->x + rect->w))
+	if(SDL_PointInRect(&mousePosition, rect))
 	{
-		if(mousePosition.y > rect->y && mousePosition.y < (rect->y + rect->h))
-			return true;
+		return true;
 	}
 	return false;
 }

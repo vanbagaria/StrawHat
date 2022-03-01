@@ -931,11 +931,11 @@ void SGE_ButtonHandleEvents(SGE_Button *button)
 	{
 		if(SGE_GetSDLEvent()->button.button == 1)
 		{
-			if(SGE_isMouseOver(&button->boundBox))
+			if(SGE_MouseInRect(&button->boundBox))
 			{
 				if(button->parentPanel != NULL)
 				{
-					if(SGE_isMouseOver(&button->parentPanel->background) && !SGE_isMouseOver(&button->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&button->parentPanel->verticalScrollbarBG))
+					if(SGE_MouseInRect(&button->parentPanel->background) && !SGE_MouseInRect(&button->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&button->parentPanel->verticalScrollbarBG))
 					{
 						button->state = SGE_CONTROL_STATE_CLICKED;
 						button->onMouseDown(button->onMouseDown_data);
@@ -955,11 +955,11 @@ void SGE_ButtonHandleEvents(SGE_Button *button)
 		{
 			if(button->state == SGE_CONTROL_STATE_CLICKED)
 			{
-				if(SGE_isMouseOver(&button->boundBox))
+				if(SGE_MouseInRect(&button->boundBox))
 				{
 					if(button->parentPanel != NULL)
 					{
-						if(SGE_isMouseOver(&button->parentPanel->background) && !SGE_isMouseOver(&button->parentPanel->horizontalScrollbarBG)&& !SGE_isMouseOver(&button->parentPanel->verticalScrollbarBG))
+						if(SGE_MouseInRect(&button->parentPanel->background) && !SGE_MouseInRect(&button->parentPanel->horizontalScrollbarBG)&& !SGE_MouseInRect(&button->parentPanel->verticalScrollbarBG))
 						{
 							button->state = SGE_CONTROL_STATE_HOVER;
 							button->onMouseUp(button->onMouseUp_data);
@@ -982,11 +982,11 @@ void SGE_ButtonHandleEvents(SGE_Button *button)
 	{
 		if(button->state != SGE_CONTROL_STATE_CLICKED)
 		{
-			if(SGE_isMouseOver(&button->boundBox))
+			if(SGE_MouseInRect(&button->boundBox))
 			{
 				if(button->parentPanel != NULL)
 				{
-					if(SGE_isMouseOver(&button->parentPanel->background) && !SGE_isMouseOver(&button->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&button->parentPanel->verticalScrollbarBG))
+					if(SGE_MouseInRect(&button->parentPanel->background) && !SGE_MouseInRect(&button->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&button->parentPanel->verticalScrollbarBG))
 						button->state = SGE_CONTROL_STATE_HOVER;
 					else
 						button->state = SGE_CONTROL_STATE_NORMAL;
@@ -1031,16 +1031,16 @@ void SGE_ButtonRender(SGE_Button *button)
 	
 	/* Draw button border */
 	SGE_SetDrawColorRGBA(0, 0, 0, button->alpha);
-	if(SGE_isMouseOver(&button->boundBox))
+	if(SGE_MouseInRect(&button->boundBox))
 	{
 		if(button->parentPanel != NULL)
 		{
-			if(SGE_isMouseOver(&button->parentPanel->background) && !SGE_isMouseOver(&button->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&button->parentPanel->verticalScrollbarBG))
+			if(SGE_MouseInRect(&button->parentPanel->background) && !SGE_MouseInRect(&button->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&button->parentPanel->verticalScrollbarBG))
 				SGE_SetDrawColorRGBA(225, 225, 225, button->alpha);
 			
 			for(i = button->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
 					SGE_SetDrawColorRGBA(0, 0, 0, button->alpha);
 			}
 		}
@@ -1187,11 +1187,11 @@ void SGE_CheckBoxHandleEvents(SGE_CheckBox *checkBox)
 	{
 		if(SGE_GetSDLEvent()->button.button == 1)
 		{
-			if(SGE_isMouseOver(&checkBox->boundBox))
+			if(SGE_MouseInRect(&checkBox->boundBox))
 			{
 				if(checkBox->parentPanel != NULL)
 				{
-					if(SGE_isMouseOver(&checkBox->parentPanel->background) && !SGE_isMouseOver(&checkBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&checkBox->parentPanel->verticalScrollbarBG))
+					if(SGE_MouseInRect(&checkBox->parentPanel->background) && !SGE_MouseInRect(&checkBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&checkBox->parentPanel->verticalScrollbarBG))
 					{
 						checkBox->state = SGE_CONTROL_STATE_CLICKED;
 						checkBox->onMouseDown(checkBox->onMouseDown_data);
@@ -1211,7 +1211,7 @@ void SGE_CheckBoxHandleEvents(SGE_CheckBox *checkBox)
 		{
 			if(checkBox->state == SGE_CONTROL_STATE_CLICKED)
 			{
-				if(SGE_isMouseOver(&checkBox->boundBox))
+				if(SGE_MouseInRect(&checkBox->boundBox))
 				{
 					checkBox->isChecked = !checkBox->isChecked;
 					checkBox->state = SGE_CONTROL_STATE_HOVER;
@@ -1228,11 +1228,11 @@ void SGE_CheckBoxHandleEvents(SGE_CheckBox *checkBox)
 	{
 		if(checkBox->state != SGE_CONTROL_STATE_CLICKED)
 		{
-			if(SGE_isMouseOver(&checkBox->boundBox))
+			if(SGE_MouseInRect(&checkBox->boundBox))
 			{
 				if(checkBox->parentPanel != NULL)
 				{
-					if(SGE_isMouseOver(&checkBox->parentPanel->background) && !SGE_isMouseOver(&checkBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&checkBox->parentPanel->verticalScrollbarBG))
+					if(SGE_MouseInRect(&checkBox->parentPanel->background) && !SGE_MouseInRect(&checkBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&checkBox->parentPanel->verticalScrollbarBG))
 						checkBox->state = SGE_CONTROL_STATE_HOVER;
 					else
 						checkBox->state = SGE_CONTROL_STATE_NORMAL;
@@ -1271,16 +1271,16 @@ void SGE_CheckBoxRender(SGE_CheckBox *checkBox)
 	
 	/* Draw gray checkbox border */
 	SGE_SetDrawColorRGBA(0, 0, 0, checkBox->alpha);
-	if(SGE_isMouseOver(&checkBox->boundBox))
+	if(SGE_MouseInRect(&checkBox->boundBox))
 	{
 		if(checkBox->parentPanel != NULL)
 		{
-			if(SGE_isMouseOver(&checkBox->parentPanel->background) && !SGE_isMouseOver(&checkBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&checkBox->parentPanel->verticalScrollbarBG))
+			if(SGE_MouseInRect(&checkBox->parentPanel->background) && !SGE_MouseInRect(&checkBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&checkBox->parentPanel->verticalScrollbarBG))
 				SGE_SetDrawColorRGBA(150, 150, 150, checkBox->alpha);
 			
 			for(i = checkBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
 					SGE_SetDrawColorRGBA(0, 0, 0, checkBox->alpha);
 			}
 		}
@@ -1656,11 +1656,11 @@ void SGE_SliderHandleEvents(SGE_Slider *slider)
 	{
 		if(SGE_GetSDLEvent()->button.button == 1)
 		{
-			if(SGE_isMouseOver(&slider->slider))
+			if(SGE_MouseInRect(&slider->slider))
 			{
 				if(slider->parentPanel != NULL)
 				{
-					if(SGE_isMouseOver(&slider->parentPanel->background) && !SGE_isMouseOver(&slider->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&slider->parentPanel->verticalScrollbarBG))
+					if(SGE_MouseInRect(&slider->parentPanel->background) && !SGE_MouseInRect(&slider->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&slider->parentPanel->verticalScrollbarBG))
 					{
 						slider->state = SGE_CONTROL_STATE_CLICKED;
 						slider->move_dx = SGE_GetMouseX() - slider->slider.x;
@@ -1674,11 +1674,11 @@ void SGE_SliderHandleEvents(SGE_Slider *slider)
 					slider->onMouseDown(slider->onMouseDown_data);
 				}
 			}
-			else if(SGE_isMouseOver(&slider->bar))
+			else if(SGE_MouseInRect(&slider->bar))
 			{
 				if(slider->parentPanel != NULL)
 				{
-					if(SGE_isMouseOver(&slider->parentPanel->background) && !SGE_isMouseOver(&slider->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&slider->parentPanel->verticalScrollbarBG))
+					if(SGE_MouseInRect(&slider->parentPanel->background) && !SGE_MouseInRect(&slider->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&slider->parentPanel->verticalScrollbarBG))
 					{
 						slider->state = SGE_CONTROL_STATE_CLICKED;
 						slider->slider_xi = SGE_GetMouseX() - (slider->slider.w / 2);
@@ -1709,7 +1709,7 @@ void SGE_SliderHandleEvents(SGE_Slider *slider)
 			if(slider->state == SGE_CONTROL_STATE_CLICKED)
 			{
 				slider->onMouseUp(slider->onMouseUp_data);
-				if(SGE_isMouseOver(&slider->slider))
+				if(SGE_MouseInRect(&slider->slider))
 				{
 					slider->state = SGE_CONTROL_STATE_HOVER;
 				}
@@ -1782,16 +1782,16 @@ void SGE_SliderRender(SGE_Slider *slider)
 	SGE_DrawFillRect(&slider->slider);
 	
 	SGE_SetDrawColorRGBA(0, 0, 0, slider->alpha);
-	if(SGE_isMouseOver(&slider->slider) || slider->state == SGE_CONTROL_STATE_CLICKED)
+	if(SGE_MouseInRect(&slider->slider) || slider->state == SGE_CONTROL_STATE_CLICKED)
 	{
 		if(slider->parentPanel != NULL)
 		{
-			if(SGE_isMouseOver(&slider->parentPanel->background) && !SGE_isMouseOver(&slider->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&slider->parentPanel->verticalScrollbarBG))
+			if(SGE_MouseInRect(&slider->parentPanel->background) && !SGE_MouseInRect(&slider->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&slider->parentPanel->verticalScrollbarBG))
 				SGE_SetDrawColorRGBA(225, 225, 225, slider->alpha);
 			
 			for(i = slider->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
 					SGE_SetDrawColorRGBA(0, 0, 0, slider->alpha);
 			}
 		}
@@ -1992,11 +1992,11 @@ void SGE_TextInputBoxHandleEvents(SGE_TextInputBox *textInputBox)
 	/* Enable or disable text input with mouse */
 	if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONDOWN)
 	{
-		if(SGE_isMouseOver(&textInputBox->inputBox))
+		if(SGE_MouseInRect(&textInputBox->inputBox))
 		{
 			if(textInputBox->parentPanel != NULL)
 			{
-				if(SGE_isMouseOver(&textInputBox->parentPanel->background) && !SGE_isMouseOver(&textInputBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&textInputBox->parentPanel->verticalScrollbarBG))
+				if(SGE_MouseInRect(&textInputBox->parentPanel->background) && !SGE_MouseInRect(&textInputBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&textInputBox->parentPanel->verticalScrollbarBG))
 				{
 					if(!textInputBox->isEnabled)
 					{
@@ -2203,17 +2203,17 @@ void SGE_TextInputBoxRender(SGE_TextInputBox *textInputBox)
 	}
 	
 	SGE_SetDrawColorRGBA(0, 0, 0, textInputBox->alpha);
-	if(SGE_isMouseOver(&textInputBox->inputBox))
+	if(SGE_MouseInRect(&textInputBox->inputBox))
 	{
 		if(textInputBox->parentPanel != NULL)
 		{
-			if(SGE_isMouseOver(&textInputBox->parentPanel->background) && !SGE_isMouseOver(&textInputBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&textInputBox->parentPanel->verticalScrollbarBG))
+			if(SGE_MouseInRect(&textInputBox->parentPanel->background) && !SGE_MouseInRect(&textInputBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&textInputBox->parentPanel->verticalScrollbarBG))
 				SGE_SetDrawColorRGBA(255, 255, 255, textInputBox->alpha);
 			
 			int i = 0;
 			for(i = textInputBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
 					SGE_SetDrawColorRGBA(0, 0, 0, textInputBox->alpha);
 			}
 		}
@@ -2389,11 +2389,11 @@ void SGE_ListBoxHandleEvents(SGE_ListBox *listBox)
 {
 	if(SGE_GetSDLEvent()->type == SDL_MOUSEBUTTONDOWN)
 	{
-		if(SGE_isMouseOver(&listBox->selectionBox))
+		if(SGE_MouseInRect(&listBox->selectionBox))
 		{
 			if(listBox->parentPanel != NULL)
 			{
-				if(SGE_isMouseOver(&listBox->parentPanel->background) && !SGE_isMouseOver(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&listBox->parentPanel->verticalScrollbarBG))
+				if(SGE_MouseInRect(&listBox->parentPanel->background) && !SGE_MouseInRect(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&listBox->parentPanel->verticalScrollbarBG))
 					listBox->isOpen = !listBox->isOpen;
 			}
 			else
@@ -2405,11 +2405,11 @@ void SGE_ListBoxHandleEvents(SGE_ListBox *listBox)
 			int i = 0;
 			for(i = 0; i < listBox->optionCount; i++)
 			{
-				if(SGE_isMouseOver(&listBox->optionBoxes[i]))
+				if(SGE_MouseInRect(&listBox->optionBoxes[i]))
 				{
 					if(listBox->parentPanel != NULL)
 					{
-						if(SGE_isMouseOver(&listBox->parentPanel->background) && !SGE_isMouseOver(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&listBox->parentPanel->verticalScrollbarBG))
+						if(SGE_MouseInRect(&listBox->parentPanel->background) && !SGE_MouseInRect(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&listBox->parentPanel->verticalScrollbarBG))
 						{
 							if(i != listBox->selection)
 							{
@@ -2474,17 +2474,17 @@ void SGE_ListBoxRender(SGE_ListBox *listBox)
 	SGE_RenderTexture(listBox->selectionImg);
 	
 	SGE_SetDrawColorRGBA(0, 0, 0, listBox->alpha);
-	if(SGE_isMouseOver(&listBox->selectionBox))
+	if(SGE_MouseInRect(&listBox->selectionBox))
 	{
 		if(listBox->parentPanel != NULL)
 		{
-			if(SGE_isMouseOver(&listBox->parentPanel->background) && !SGE_isMouseOver(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&listBox->parentPanel->verticalScrollbarBG))
+			if(SGE_MouseInRect(&listBox->parentPanel->background) && !SGE_MouseInRect(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&listBox->parentPanel->verticalScrollbarBG))
 				SGE_SetDrawColorRGBA(150, 150, 150, listBox->alpha);
 			
 			int i = 0;
 			for(i = listBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
 					SGE_SetDrawColorRGBA(0, 0, 0, listBox->alpha);
 			}
 		}
@@ -2505,17 +2505,17 @@ void SGE_ListBoxRender(SGE_ListBox *listBox)
 		for(i = 0; i < listBox->optionCount; i++)
 		{
 			SGE_SetDrawColorRGBA(255, 255, 255, listBox->alpha);
-			if(SGE_isMouseOver(&listBox->optionBoxes[i]))
+			if(SGE_MouseInRect(&listBox->optionBoxes[i]))
 			{
 				if(listBox->parentPanel != NULL)
 				{
-					if(SGE_isMouseOver(&listBox->parentPanel->background) && !SGE_isMouseOver(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_isMouseOver(&listBox->parentPanel->verticalScrollbarBG))
+					if(SGE_MouseInRect(&listBox->parentPanel->background) && !SGE_MouseInRect(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&listBox->parentPanel->verticalScrollbarBG))
 						SGE_SetDrawColorRGBA(50, 50, 150, listBox->alpha);
 					
 					int i = 0;
 					for(i = listBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 					{
-						if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
+						if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
 							SGE_SetDrawColorRGBA(255, 255, listBox->alpha, listBox->alpha);
 					}
 				}
@@ -2610,12 +2610,12 @@ void SGE_MinimizeButtonHandleEvents(SGE_MinimizeButton *minButton)
 	{
 		if(SGE_GetSDLEvent()->button.button == 1)
 		{
-			if(SGE_isMouseOver(&minButton->boundBox))
+			if(SGE_MouseInRect(&minButton->boundBox))
 			{
 				minButton->state = SGE_CONTROL_STATE_CLICKED;
 				for(i = minButton->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 				{
-					if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
+					if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
 						minButton->state = SGE_CONTROL_STATE_NORMAL;
 				}
 			}
@@ -2627,7 +2627,7 @@ void SGE_MinimizeButtonHandleEvents(SGE_MinimizeButton *minButton)
 		{
 			if(minButton->state == SGE_CONTROL_STATE_CLICKED)
 			{
-				if(SGE_isMouseOver(&minButton->boundBox))
+				if(SGE_MouseInRect(&minButton->boundBox))
 				{
 					minButton->state = SGE_CONTROL_STATE_HOVER;
 					SGE_WindowPanelToggleMinimized(minButton->parentPanel);
@@ -2643,12 +2643,12 @@ void SGE_MinimizeButtonHandleEvents(SGE_MinimizeButton *minButton)
 	{
 		if(minButton->state != SGE_CONTROL_STATE_CLICKED)
 		{
-			if(SGE_isMouseOver(&minButton->boundBox))
+			if(SGE_MouseInRect(&minButton->boundBox))
 			{
 				minButton->state = SGE_CONTROL_STATE_HOVER;
 				for(i = minButton->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 				{
-					if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
+					if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
 						minButton->state = SGE_CONTROL_STATE_NORMAL;
 				}
 			}
@@ -2681,13 +2681,13 @@ void SGE_MinimizeButtonRender(SGE_MinimizeButton *minButton)
 	
 	/* Draw button border */
 	SGE_SetDrawColorRGBA(0, 0, 0, minButton->parentPanel->alpha);
-	if(SGE_isMouseOver(&minButton->boundBox))
+	if(SGE_MouseInRect(&minButton->boundBox))
 	{
 		SGE_SetDrawColorRGBA(225, 225, 225, minButton->parentPanel->alpha);
 		
 		for(i = minButton->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 		{
-			if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
+			if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
 				SGE_SetDrawColorRGBA(0, 0, 0, minButton->parentPanel->alpha);
 		}
 	}
@@ -2879,12 +2879,12 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 		if(SGE_GetSDLEvent()->button.button == 1)
 		{
 			/* Set panel as active when clicked */
-			if(SGE_isMouseOver(&panel->border))
+			if(SGE_MouseInRect(&panel->border))
 			{
 				SGE_WindowPanel *active = NULL;
 				for(i = 0; i < panelCount; i++)
 				{
-					if(SGE_isMouseOver(&panels[i]->border))
+					if(SGE_MouseInRect(&panels[i]->border))
 						active = panels[i];
 				}
 				SGE_SetActiveWindowPanel(active);
@@ -2896,14 +2896,14 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 			}
 			
 			/* Move the panel when titleRect is clicked */
-			if(SGE_isMouseOver(&panel->titleRect))
+			if(SGE_MouseInRect(&panel->titleRect))
 			{
 				if(panel->isMovable)
 				{
 					panel->isMoving = true;
 					for(i = panel->index + 1; i < panelCount; i++)
 					{
-						if(SGE_isMouseOver(&panels[i]->border))
+						if(SGE_MouseInRect(&panels[i]->border))
 							panel->isMoving = false;
 					}
 					
@@ -2912,7 +2912,7 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 
 					if(panel->isMinimizable)
 					{
-						if(SGE_isMouseOver(&panel->minimizeButton->boundBox))
+						if(SGE_MouseInRect(&panel->minimizeButton->boundBox))
 						{
 							panel->isMoving = false;
 						}
@@ -2921,14 +2921,14 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 			}
 			
 			/* Resize the panel vertically */
-			if(SGE_isMouseOver(&panel->resizeBar_vertical) && !SGE_isMouseOver(&panel->background))
+			if(SGE_MouseInRect(&panel->resizeBar_vertical) && !SGE_MouseInRect(&panel->background))
 			{
 				if(panel->isResizable && !panel->isMinimized)
 				{
 					panel->isResizing_vertical = true;
 					for(i = panel->index + 1; i < panelCount; i++)
 					{
-						if(SGE_isMouseOver(&panels[i]->border))
+						if(SGE_MouseInRect(&panels[i]->border))
 							panel->isResizing_vertical = false;
 					}
 					
@@ -2938,14 +2938,14 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 			}
 			
 			/* Resize the panel horizontally */
-			if(SGE_isMouseOver(&panel->resizeBar_horizontal) && !SGE_isMouseOver(&panel->background))
+			if(SGE_MouseInRect(&panel->resizeBar_horizontal) && !SGE_MouseInRect(&panel->background))
 			{
 				if(panel->isResizable && !panel->isMinimized)
 				{
 					panel->isResizing_horizontal = true;
 					for(i = panel->index + 1; i < panelCount; i++)
 					{
-						if(SGE_isMouseOver(&panels[i]->border))
+						if(SGE_MouseInRect(&panels[i]->border))
 							panel->isResizing_horizontal = false;
 					}
 					
@@ -2957,23 +2957,23 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 			/* Scroll Horizontally */
 			if(panel->horizontalScrollbarEnabled)
 			{
-				if(SGE_isMouseOver(&panel->horizontalScrollbar))
+				if(SGE_MouseInRect(&panel->horizontalScrollbar))
 				{
 					panel->isScrolling_horizontal = true;
 					for(i = panel->index + 1; i < panelCount; i++)
 					{
-						if(SGE_isMouseOver(&panels[i]->border))
+						if(SGE_MouseInRect(&panels[i]->border))
 							panel->isScrolling_horizontal = false;
 					}
 					panel->horizontalScrollbar_move_dx = SGE_GetMouseX() - panel->horizontalScrollbar.x;
 				}
 				
-				if(SGE_isMouseOver(&panel->horizontalScrollbarBG) && !SGE_isMouseOver(&panel->horizontalScrollbar))
+				if(SGE_MouseInRect(&panel->horizontalScrollbarBG) && !SGE_MouseInRect(&panel->horizontalScrollbar))
 				{
 					panel->isScrolling_horizontal = true;
 					for(i = panel->index + 1; i < panelCount; i++)
 					{
-						if(SGE_isMouseOver(&panels[i]->border))
+						if(SGE_MouseInRect(&panels[i]->border))
 							panel->isScrolling_horizontal = false;
 					}
 					if(panel->isScrolling_horizontal)
@@ -2987,23 +2987,23 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 			/* Scroll Vertically */
 			if(panel->verticalScrollbarEnabled)
 			{
-				if(SGE_isMouseOver(&panel->verticalScrollbar))
+				if(SGE_MouseInRect(&panel->verticalScrollbar))
 				{
 					panel->isScrolling_vertical = true;
 					for(i = panel->index + 1; i < panelCount; i++)
 					{
-						if(SGE_isMouseOver(&panels[i]->border))
+						if(SGE_MouseInRect(&panels[i]->border))
 							panel->isScrolling_vertical = false;
 					}
 					panel->verticalScrollbar_move_dy = SGE_GetMouseY() - panel->verticalScrollbar.y;
 				}
 				
-				if(SGE_isMouseOver(&panel->verticalScrollbarBG) && !SGE_isMouseOver(&panel->verticalScrollbar))
+				if(SGE_MouseInRect(&panel->verticalScrollbarBG) && !SGE_MouseInRect(&panel->verticalScrollbar))
 				{
 					panel->isScrolling_vertical = true;
 					for(i = panel->index + 1; i < panelCount; i++)
 					{
-						if(SGE_isMouseOver(&panels[i]->border))
+						if(SGE_MouseInRect(&panels[i]->border))
 							panel->isScrolling_vertical = false;
 					}
 					if(panel->isScrolling_vertical)
@@ -3229,13 +3229,13 @@ void SGE_WindowPanelRender(SGE_WindowPanel *panel)
 		SGE_DrawFillRect(&panel->horizontalScrollbar);
 		
 		SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
-		if(SGE_isMouseOver(&panel->horizontalScrollbar))
+		if(SGE_MouseInRect(&panel->horizontalScrollbar))
 		{
 			SGE_SetDrawColorRGBA(225, 225, 225, panel->alpha);
 			
 			for(i = panel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
 					SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
 			}
 		}
@@ -3254,13 +3254,13 @@ void SGE_WindowPanelRender(SGE_WindowPanel *panel)
 		SGE_DrawFillRect(&panel->verticalScrollbar);
 		
 		SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
-		if(SGE_isMouseOver(&panel->verticalScrollbar))
+		if(SGE_MouseInRect(&panel->verticalScrollbar))
 		{
 			SGE_SetDrawColorRGBA(225, 225, 225, panel->alpha);
 			
 			for(i = panel->index + 1; i < currentStateControls->panelCount; i++)
 			{
-				if(SGE_isMouseOver(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
 					SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
 			}
 		}

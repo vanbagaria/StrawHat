@@ -94,7 +94,7 @@ static unsigned int lastLabelUpdateTime;
 static void SGE_GUI_ControlList_HandleEvents(SGE_GUI_ControlList *controls);
 static void SGE_GUI_ControlList_Update(SGE_GUI_ControlList *controls);
 static void SGE_GUI_ControlList_Render(SGE_GUI_ControlList *controls);
-static void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls);
+void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls);
 
 /**
  * \brief Creates a new SGE_GUI_ControlList for a game state.
@@ -118,17 +118,14 @@ SGE_GUI_ControlList *SGE_CreateGUIControlList()
 /**
  * \brief Destroys a game state's GUI control list.
  * 
- * This function will delete all the GUI controls that were created by the specified state.
- * It is called automatically when a state is freed by the SGE_QuitState() function.
+ * This function will delete the GUI control list that is held by the specified state.
+ * It is called automatically when a state is unregistered by the SGE_DestroyStateList() function.
  * 
  * \param controls A address of the address of the GUI control list that should be freed.
  */
-void SGE_DestroyGUIControlList(SGE_GUI_ControlList **controls)
+void SGE_DestroyGUIControlList(SGE_GUI_ControlList *controls)
 {
-	if(*controls != NULL)
-		SGE_GUI_FreeControlList(*controls);
-	free(*controls);
-	*(controls) = NULL;
+	free(controls);
 }
 
 /**
@@ -799,7 +796,7 @@ static void SGE_GUI_ControlList_Render(SGE_GUI_ControlList *controls)
 	}
 }
 
-static void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls)
+void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls)
 {
 	int i = 0;
 	int j = 0;

@@ -191,7 +191,7 @@ int SGE_GetScreenCenterX()
 
 int SGE_GetScreenCenterY()
 {
-	return screenWidth / 2;
+	return screenHeight / 2;
 }
 
 void SGE_SetBackgroundColor(SDL_Color color)

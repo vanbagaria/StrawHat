@@ -9,7 +9,8 @@
 
 typedef struct SGE_GUI_ControlList SGE_GUI_ControlList;
 SGE_GUI_ControlList *SGE_CreateGUIControlList();
-void SGE_DestroyGUIControlList(SGE_GUI_ControlList **controls);
+void SGE_DestroyGUIControlList(SGE_GUI_ControlList *controls);
+void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls);
 
 /* Used to update the current control list pointer in SGE_GUI.c */
 void SGE_GUI_UpdateCurrentState(const char *nextState);
@@ -256,7 +257,7 @@ void SGE_InitState(const char *name)
 }
 
 /**
- * \brief Calls a state's quit function and sets it's loaded flag to false.
+ * \brief Calls a state's quit function, deletes it's GUI controls and sets it's loaded flag to false.
  * 
  * \param state The name of the state to quit.
  */
@@ -271,7 +272,7 @@ void SGE_QuitState(const char *name)
 
 	SGE_LogPrintLine(SGE_LOG_INFO, "Quitting state: \"%s\"...", state->name);
 	state->quit();
-	SGE_DestroyGUIControlList(&state->controls);
+	SGE_GUI_FreeControlList(state->controls);
 	state->loaded = false;
 	SGE_LogPrintLine(SGE_LOG_INFO, "Finished Quitting State.");
 	SGE_printf(SGE_LOG_DEBUG, "\n");
@@ -350,7 +351,7 @@ void SGE_AddState(const char *name, bool (*init)(), void (*quit)(), void (*handl
 /**
  * \brief Deallocator callback used by the state list to unregister all states.
  *        This is called for each state in the list when the state list is destroyed.
- *        It calls the quit function for any loaded states and destroys their GUI controls.
+ *        It calls the quit function for any loaded states and destroys their GUI control list.
  * 
  * \param data The current state when iterating over state list with LLFree()
  */
@@ -360,6 +361,8 @@ void SGE_FreeState(void *data)
 	if(state->loaded)
 	{
 		SGE_QuitState(state->name);
+		SGE_DestroyGUIControlList(state->controls);
+		state->controls = NULL;
 	}
 	SGE_LogPrintLine(SGE_LOG_DEBUG, "Unregistered state: %s", state->name);
 	free(state);

@@ -37,6 +37,8 @@ void SGE_LLClear(SGE_LinkedList *list)
         free(current);
         current = temp;
         count++;
+        list->head = current;
+        list->size--;
     }
     SGE_LogPrintLine(SGE_LOG_DEBUG, "Freed linked list with %d nodes!", count);
     list->head = NULL;
@@ -185,21 +187,27 @@ void SGE_LLRemove(SGE_LinkedList *list, SGE_LLNode *node)
     free(current);
 }
 
-void SGE_LLProcess(SGE_LinkedList *list, void (*processFunc)(SGE_LinkedList *list, SGE_LLNode* currentNode, void *processData), void *data)
+void *SGE_LLProcess(SGE_LinkedList *list, void *(*processFunc)(SGE_LinkedList *list, SGE_LLNode* currentNode, void *processData), void *data)
 {
     if(list == NULL)
     {
         SGE_LogPrintLine(SGE_LOG_WARNING, "Attempt to process NULL linked list!");
-        return;
+        return NULL;
     }
 
     SGE_LLNode *current = list->head;
     while(current != NULL)
     {
         SGE_LLNode *temp = current->next;
-        processFunc(list, current, data);
+        void *done = processFunc(list, current, data);
+        if(done)
+        {
+            return done;
+        }
         current = temp; // This ensures safety if processFunc() happens to free the current node
     }
+
+    return NULL;
 }
 
 void SGE_LLPrint(SGE_LinkedList *list, void (*printFunc)(void *data))
@@ -234,7 +242,7 @@ void SGE_LLPrintStr(void *data)
     SGE_printf(SGE_LOG_DEBUG, "\"%s\"", (char*)data);
 }
 
-void SGE_LLSearchStr(SGE_LinkedList *list, SGE_LLNode *currentNode, void *processData)
+void *SGE_LLSearchStr(SGE_LinkedList *list, SGE_LLNode *currentNode, void *processData)
 {
     char *currentStr = currentNode->data;
     char *searchStr = processData;
@@ -243,13 +251,15 @@ void SGE_LLSearchStr(SGE_LinkedList *list, SGE_LLNode *currentNode, void *proces
     {
         SGE_LogPrintLine(SGE_LOG_DEBUG, "String \"%s\" found!", searchStr);
     }
+
+    return NULL;
 }
 
-void SGE_LLSearchRemoveStr(SGE_LinkedList *list,  SGE_LLNode *currentNode, void *processData)
+void *SGE_LLSearchRemoveStr(SGE_LinkedList *list,  SGE_LLNode *currentNode, void *processData)
 {
     if(processData == NULL)
     {
-        return;
+        return NULL;
     }
 
     char *currentStr = currentNode->data;
@@ -258,4 +268,6 @@ void SGE_LLSearchRemoveStr(SGE_LinkedList *list,  SGE_LLNode *currentNode, void 
     {
         SGE_LLRemove(list, currentNode);
     }
+
+    return NULL;
 }

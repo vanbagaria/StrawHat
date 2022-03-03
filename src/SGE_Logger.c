@@ -94,7 +94,7 @@ static void SGE_LogPrintTags(SGE_LogLevel level)
 	}
 	
 	fprintf(logStream, "[");
-	fprintf(logStream, SGE_GetCurrentState()->name);
+	fprintf(logStream, SGE_GetCurrentStateName());
 	fprintf(logStream, "]: ");
 }
 

@@ -5,13 +5,13 @@
 #include "SGE_Containers.h"
 #include <stdbool.h>
 
-typedef struct SGE_WindowPanel    SGE_WindowPanel;
-typedef struct SGE_Button         SGE_Button;
-typedef struct SGE_CheckBox       SGE_CheckBox;
-typedef struct SGE_TextLabel      SGE_TextLabel;
-typedef struct SGE_Slider         SGE_Slider;
-typedef struct SGE_TextInputBox   SGE_TextInputBox;
-typedef struct SGE_ListBox        SGE_ListBox;
+typedef struct SGE_WindowPanel   SGE_WindowPanel;
+typedef struct SGE_Button        SGE_Button;
+typedef struct SGE_CheckBox      SGE_CheckBox;
+typedef struct SGE_TextLabel     SGE_TextLabel;
+typedef struct SGE_Slider        SGE_Slider;
+typedef struct SGE_TextInputBox  SGE_TextInputBox;
+typedef struct SGE_ListBox       SGE_ListBox;
 
 #define STATE_MAX_BUTTONS          50
 #define STATE_MAX_CHECKBOXES       50
@@ -21,34 +21,12 @@ typedef struct SGE_ListBox        SGE_ListBox;
 #define STATE_MAX_LISTBOXES        50
 #define STATE_MAX_PANELS           50
 
-/**
- * \brief A list of GUI controls that is held by each state in SGE.
- * 
- * Each state holds a copy of this structure to maintain it's controls.
- * The SGE GUI holds a reference to the current state's control list to be used by
- * GUI functions.
- */
-typedef struct SGE_GUI_ControlList
-{
-	/* Panel Stack */
-	SGE_WindowPanel *panels[STATE_MAX_PANELS];
-	int panelCount;
-
-	/* Parentless Controls */
-
-	SGE_Button *buttons[STATE_MAX_BUTTONS];
-	int buttonCount;
-	SGE_CheckBox *checkBoxes[STATE_MAX_CHECKBOXES];
-	int checkBoxCount;
-	SGE_TextLabel *labels[STATE_MAX_LABELS];
-	int labelCount;
-	SGE_Slider *sliders[STATE_MAX_SLIDERS];
-	int sliderCount;
-	SGE_TextInputBox *textInputBoxes[STATE_MAX_TEXT_INPUT_BOXES];
-	int textInputBoxCount;
-	SGE_ListBox *listBoxes[STATE_MAX_LISTBOXES];
-	int listBoxCount;
-} SGE_GUI_ControlList;
+#define PANEL_MAX_BUTTONS          50
+#define PANEL_MAX_CHECKBOXES       50
+#define PANEL_MAX_LABELS           50
+#define PANEL_MAX_SLIDERS          50
+#define PANEL_MAX_TEXT_INPUT_BOXES 50
+#define PANEL_MAX_LISTBOXES        50
 
 typedef enum
 {
@@ -223,12 +201,6 @@ typedef struct SGE_MinimizeButton
 	SDL_Color currentColor;
 } SGE_MinimizeButton;
 
-#define PANEL_MAX_BUTTONS          50
-#define PANEL_MAX_CHECKBOXES       50
-#define PANEL_MAX_LABELS           50
-#define PANEL_MAX_SLIDERS          50
-#define PANEL_MAX_TEXT_INPUT_BOXES 50
-#define PANEL_MAX_LISTBOXES        50
 typedef struct SGE_WindowPanel
 {
 	char titleStr[50];
@@ -313,12 +285,6 @@ typedef struct SGE_WindowPanel
 	int listBoxCount;
 } SGE_WindowPanel;
 
-bool SGE_GUI_Init();
-void SGE_GUI_Quit();
-void SGE_GUI_HandleEvents();
-void SGE_GUI_Update();
-void SGE_GUI_Render();
-
 SGE_Button *SGE_CreateButton(const char *text, int x, int y, struct SGE_WindowPanel *panel);
 void SGE_ButtonSetPosition(SGE_Button *button, int x, int y);
 
@@ -371,34 +337,5 @@ void SGE_CheckBoxSetPositionNextTo(SGE_CheckBox *checkBox, SDL_Rect targetBoundB
 void SGE_TextLabelSetPositionNextTo(SGE_TextLabel *label, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
 void SGE_SliderSetPositionNextTo(SGE_Slider *slider, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
 void SGE_WindowPanelSetPositionNextTo(SGE_WindowPanel *panel, SDL_Rect targetBoundBox, SGE_ControlDirection direction, int spacing_x, int spacing_y);
-
-
-/**
- * \brief Updates the control list to be used by SGE GUI functions.
- * 
- * This function is automatically called by SGE_SwitchStates() after a state switch is triggered
- * so the new state's SGE_GUI_ControlList is used by GUI functions.
- * It also resets the state of all the controls in the new state since a state switch might have
- * left the controls in an altered state. (e.g if a button is used to trigger a state switch)
- * 
- * \note This should not be called by the user, as it could lead to another
- *       state's GUI being rendered over the current state.
- * 
- * \param nextState The name of the state that is being switched to.
- */
-void SGE_GUI_UpdateCurrentState(const char *nextState);
-
-/**
- * \brief Free's a game state's GUI control list.
- * 
- * This function will delete all the GUI controls that were created by the specified state.
- * It is called automatically when a state is freed by the SGE_QuitState() function.
- * 
- * \note This should not be called by the user, as the state might try to use a control
- *       that has been freed.
- * 
- * \param name The name of the state whose GUI controls should be freed.
- */
-void SGE_GUI_FreeState(const char *state);
 
 #endif

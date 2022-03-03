@@ -10,14 +10,7 @@
 
 #include <stdlib.h>
 #include <time.h>
-
-/* Current state */
-static SGE_GameState currentState;
-
-SGE_GameState *SGE_GetCurrentState()
-{
-	return &currentState;
-}
+#include <string.h>
 
 /* SDL Library versions */
 static SDL_version SDL_Version_C;
@@ -60,6 +53,74 @@ static unsigned int lastRenderTime = 0;
 static unsigned int lastFrameTime  = 0;
 static bool frameRateCap = false;
 static double deltaTime = 0;
+
+/* Current state function pointers */
+static char currentStateName[20] = "SGE";
+static void (*currentStateInit)()         = NULL;
+static void (*currentStateQuit)()         = NULL;
+static void (*currentStateHandleEvents)() = NULL;
+static void (*currentStateUpdate)()       = NULL;
+static void (*currentStateRender)()       = NULL;
+
+/* Fallbacks defined in SGE_GameState.c */
+bool SGE_FallbackInit();
+void SGE_FallbackQuit();
+void SGE_FallbackHandleEvents();
+void SGE_FallbackUpdate();
+void SGE_FallbackRender();
+
+/* Defined in SGE_GameState.c */
+void SGE_CreateStateList();
+void SGE_DestroyStateList();
+void SGE_InitState(const char *name);
+void SGE_QuitState(const char *name);
+void SGE_SwitchStates();
+
+/* Returns the name of the current state */
+const char *SGE_GetCurrentStateName()
+{
+	return currentStateName;
+}
+
+/**
+ * \brief Sets the current state function pointers.
+ * 
+ * \param name The name of the current state.
+ * \param init The init function of the state.
+ * \param quit The quit function of the state.
+ * \param handleEvents The handleEvents function of the state.
+ * \param update The update function of the state.
+ * \param render The render function of the state.
+ */
+void SGE_SetCurrentStateFunctions(const char *name, bool (*init)(), void (*quit)(), void (*handleEvents)(), void (*update)(), void (*render)())
+{
+	strncpy(currentStateName, name, 20);
+	currentStateInit = (init == NULL) ? SGE_FallbackInit : init;
+	currentStateQuit = (quit == NULL) ? SGE_FallbackQuit : quit;
+	currentStateHandleEvents = (handleEvents == NULL) ? SGE_FallbackHandleEvents : handleEvents;
+	currentStateUpdate = (update == NULL) ? SGE_FallbackUpdate : update;
+	currentStateRender = (render == NULL) ? SGE_FallbackRender : render;
+}
+
+/**
+ * \brief Sets the current state function pointers to a registered state's functions.
+ * 
+ * This function is defined in SGE_GameState.c, it is called by SGE_Run() to determine 
+ * the first state that SGE should start with.
+ * 
+ * \param name The name of a registered state.
+ */
+void SGE_SetCurrentStateFunctionsFromList(const char *name);
+
+/* Defined in SGE_GUI.c */
+bool SGE_GUI_Init();
+void SGE_GUI_Quit();
+void SGE_GUI_HandleEvents();
+void SGE_GUI_Update();
+void SGE_GUI_Render();
+
+/*  Updates the current control list pointer in SGE_GUI.c */
+void SGE_GUI_UpdateCurrentState(const char *nextState);
 
 /**
  * \brief Updates the SDL_Renderer to be used by SGE_Graphics.c
@@ -194,7 +255,6 @@ void SGE_SetBackgroundColor(SDL_Color color)
 	SDL_MIXER_VERSION(&SDL_MIX_Version_C);
 	SDL_MIX_Version_DLL = Mix_Linked_Version();
 	
-	SGE_SetStateFunctions(&currentState, "SGE", NULL, NULL, NULL, NULL, NULL);
 	SGE_LogPrintLine(SGE_LOG_INFO, "Straw Hat Game Engine Version 1.0");
 	SGE_LogPrintLine(SGE_LOG_DEBUG, "Platform: %s", SDL_GetPlatform());
 	//SGE_LogPrintLine(SGE_LOG_DEBUG, "Video Driver: %s", SDL_GetCurrentVideoDriver());
@@ -221,6 +281,8 @@ void SGE_SetBackgroundColor(SDL_Color color)
 	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Mixer Version: %d.%d.%d (Linked)", SDL_MIX_Version_DLL->major, SDL_MIX_Version_DLL->minor, SDL_MIX_Version_DLL->patch);
 
 	SGE_printf(SGE_LOG_DEBUG, "\n");
+
+	SGE_CreateStateList();
 	
 	if(!SGE_GUI_Init())
 	{
@@ -246,21 +308,9 @@ void SGE_SetBackgroundColor(SDL_Color color)
 
 void SGE_Run(const char *startStateName)
 {
-	SGE_GameState *startState = SGE_GetState(startStateName);
-	if(startState != NULL)
-	{
-		SGE_SetStateFunctions(&currentState, startState->name, startState->init, startState->quit, startState->handleEvents, startState->update, startState->render);
-	}
-	else
-	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "No state set, creating fallback!");
-		SGE_AddState("No State", NULL, NULL, NULL, NULL, NULL);
-		startState = SGE_GetState("No State");
-		SGE_SetStateFunctions(&currentState, startState->name, startState->init, startState->quit, startState->handleEvents, startState->update, startState->render);
-	}
-	
-	SGE_GUI_UpdateCurrentState(currentState.name);
-	SGE_InitState(&currentState);
+	SGE_SetCurrentStateFunctionsFromList(startStateName);
+	SGE_GUI_UpdateCurrentState(currentStateName);
+	SGE_InitState(currentStateName);
 
 	while(isRunning)
 	{
@@ -278,16 +328,16 @@ void SGE_Run(const char *startStateName)
 				isRunning = false;
 			}
 			SGE_GUI_HandleEvents();
-			currentState.handleEvents();
+			currentStateHandleEvents();
 		}
 		
 		/* Logic Updates */
 		SGE_GUI_Update();
-		currentState.update();
+		currentStateUpdate();
 		
 		/* Rendering */
 		SGE_ClearScreen(defaultScreenClearColor);
-		currentState.render();
+		currentStateRender();
 		SGE_GUI_Render();
 		SDL_RenderPresent(renderer);
 
@@ -304,10 +354,10 @@ void SGE_Run(const char *startStateName)
 		}
 	}
 	
-	SGE_QuitState(&currentState);
-	SGE_SetStateFunctions(&currentState, "SGE", NULL, NULL, NULL, NULL, NULL);
+	SGE_QuitState(currentStateName);
+	SGE_SetCurrentStateFunctions("SGE", NULL, NULL, NULL, NULL, NULL);
 	
-	SGE_FreeStateList();
+	SGE_DestroyStateList();
 	SGE_GUI_Quit();
 	
 	Mix_CloseAudio();
@@ -375,7 +425,7 @@ void SGE_ToggleVsync()
 	SDL_GetRenderDrawColor(renderer, &drawColor.r, &drawColor.g, &drawColor.b, &drawColor.a);
 	
 	/* Quit the current state and the GUI to free all textures */
-	SGE_QuitState(&currentState);
+	SGE_QuitState(currentStateName);
 	SGE_GUI_Quit();
 	
 	SDL_DestroyRenderer(renderer);
@@ -398,7 +448,7 @@ void SGE_ToggleVsync()
 	
 	/* Reinitialize the GUI and the current state */
 	SGE_GUI_Init();
-	SGE_InitState(&currentState);
+	SGE_InitState(currentStateName);
 	
 	if(isVsyncOn)
 	{

@@ -13,7 +13,36 @@ static TTF_Font *labelFont = NULL;
 static TTF_Font *textBoxFont = NULL;
 static TTF_Font *listBoxFont = NULL;
 
-/* List for current state's controls */
+/**
+ * \brief A list of GUI controls that is held by each state in SGE.
+ * 
+ * Each state holds a copy of this structure to maintain it's controls.
+ * The SGE GUI holds a reference to the current state's control list to be used by
+ * GUI functions.
+ */
+typedef struct SGE_GUI_ControlList
+{
+	/* Panel Stack */
+	SGE_WindowPanel *panels[STATE_MAX_PANELS];
+	int panelCount;
+
+	/* Parentless Controls */
+
+	SGE_Button *buttons[STATE_MAX_BUTTONS];
+	int buttonCount;
+	SGE_CheckBox *checkBoxes[STATE_MAX_CHECKBOXES];
+	int checkBoxCount;
+	SGE_TextLabel *labels[STATE_MAX_LABELS];
+	int labelCount;
+	SGE_Slider *sliders[STATE_MAX_SLIDERS];
+	int sliderCount;
+	SGE_TextInputBox *textInputBoxes[STATE_MAX_TEXT_INPUT_BOXES];
+	int textInputBoxCount;
+	SGE_ListBox *listBoxes[STATE_MAX_LISTBOXES];
+	int listBoxCount;
+} SGE_GUI_ControlList;
+
+/* List pointer for current state's controls */
 static SGE_GUI_ControlList *currentStateControls = NULL;
 
 /* 
@@ -62,6 +91,56 @@ static SGE_TextLabel *vsyncLabel;
 static unsigned int labelUpdateInterval = 250;
 static unsigned int lastLabelUpdateTime;
 
+static void SGE_GUI_ControlList_HandleEvents(SGE_GUI_ControlList *controls);
+static void SGE_GUI_ControlList_Update(SGE_GUI_ControlList *controls);
+static void SGE_GUI_ControlList_Render(SGE_GUI_ControlList *controls);
+static void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls);
+
+/**
+ * \brief Creates a new SGE_GUI_ControlList for a game state.
+ * 
+ * \return The address of the created list of GUI controls.
+ */
+SGE_GUI_ControlList *SGE_CreateGUIControlList()
+{
+	SGE_GUI_ControlList *controls = (SGE_GUI_ControlList*)malloc(sizeof(SGE_GUI_ControlList));
+	controls->buttonCount = 0;
+	controls->checkBoxCount = 0;
+	controls->sliderCount = 0;
+	controls->labelCount = 0;
+	controls->listBoxCount = 0;
+	controls->textInputBoxCount = 0;
+	
+	controls->panelCount = 0;
+	return controls;
+}
+
+/**
+ * \brief Destroys a game state's GUI control list.
+ * 
+ * This function will delete all the GUI controls that were created by the specified state.
+ * It is called automatically when a state is freed by the SGE_QuitState() function.
+ * 
+ * \param controls A address of the address of the GUI control list that should be freed.
+ */
+void SGE_DestroyGUIControlList(SGE_GUI_ControlList **controls)
+{
+	if(*controls != NULL)
+		SGE_GUI_FreeControlList(*controls);
+	free(*controls);
+	*(controls) = NULL;
+}
+
+/**
+ * \brief Returns the SGE_GUI_ControlList pointer for a registered state.
+ * 
+ * This function is defined in SGE_GameState.c
+ * 
+ * \param name The name of the registered state whose GUI control list should be returned.
+ * \return The address of the GUI control list of the registered state.
+ */
+SGE_GUI_ControlList *SGE_GetStateGUIControlList(const char *name);
+
 /* GUI control functions */
 
 static void SGE_DestroyButton(SGE_Button *button);
@@ -99,11 +178,6 @@ static void SGE_WindowPanelRender(SGE_WindowPanel *panel);
 static void SGE_WindowPanelCalculateMCR(SGE_WindowPanel *panel, SDL_Rect boundBox);
 static void SGE_WindowPanelShouldEnableHorizontalScroll(SGE_WindowPanel *panel);
 static void SGE_WindowPanelShouldEnableVerticalScroll(SGE_WindowPanel *panel);
-
-static void SGE_GUI_ControlList_HandleEvents(SGE_GUI_ControlList *controls);
-static void SGE_GUI_ControlList_Update(SGE_GUI_ControlList *controls);
-static void SGE_GUI_ControlList_Render(SGE_GUI_ControlList *controls);
-static void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls);
 
 /* Handler for frame info labels toggle */
 static void onShowFrameInfoToggle(void *data)
@@ -493,10 +567,20 @@ void SGE_GUI_Render()
 	}
 }
 
+/**
+ * \brief Updates the control list to be used by SGE GUI functions.
+ * 
+ * This function is automatically called by SGE_SwitchStates() after a state switch is triggered
+ * so the new state's SGE_GUI_ControlList is used by GUI functions.
+ * It also resets the state of all the controls in the new state since a state switch might have
+ * left the controls in an altered state. (e.g if a button is used to trigger a state switch)
+ * 
+ * \param nextState The name of the state that is being switched to.
+ */
 void SGE_GUI_UpdateCurrentState(const char *nextState)
 {
 	int i;
-	currentStateControls = SGE_GetStateGUIList(nextState);
+	currentStateControls = SGE_GetStateGUIControlList(nextState);
 	if(currentStateControls == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_WARNING, "Attempted switch to NULL GUI Control List!");
@@ -811,13 +895,6 @@ static void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls)
 		controls->panels[i] = NULL;
 	}
 	controls->panelCount = 0;
-}
-
-void SGE_GUI_FreeState(const char *name)
-{
-	SGE_GUI_ControlList *controls = SGE_GetStateGUIList(name);
-	if(controls != NULL)
-		SGE_GUI_FreeControlList(controls);
 }
 
 /* GUI Control Functions */

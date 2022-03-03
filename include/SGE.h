@@ -26,7 +26,7 @@ SDL_Point SGE_GetMousePosition();
 bool SGE_KeyIsPressed(SDL_Scancode scancode);
 double SGE_GetDeltaTime();
 
-SGE_GameState *SGE_GetCurrentState();
+const char *SGE_GetCurrentStateName();
 SDL_Renderer *SGE_GetSDLRenderer();
 SDL_Event *SGE_GetSDLEvent();
 

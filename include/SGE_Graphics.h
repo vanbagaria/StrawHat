@@ -1,3 +1,10 @@
+/**
+ * \file SGE_Graphics.h
+ * \brief The include header for the SGE Graphics module.
+ * 
+ * This header contains graphics related functions for the SGE Graphics module.
+ */
+
 #ifndef __SGE_GRAPHICS_H__
 #define __SGE_GRAPHICS_H__
 
@@ -5,10 +12,12 @@
 #include "SDL_ttf.h"
 #include <stdbool.h>
 
-/*******************
- * Color constants
- *******************/
-
+/**
+ * \name SGE Color Constants
+ *  
+ * SDL_Color constants that contain RGB values for various colors.
+ */
+/**@{*/
 extern const SDL_Color SGE_COLOR_WHITE;
 extern const SDL_Color SGE_COLOR_BLACK;
 extern const SDL_Color SGE_COLOR_GRAY;
@@ -25,6 +34,7 @@ extern const SDL_Color SGE_COLOR_CERISE;
 extern const SDL_Color SGE_COLOR_ORANGE;
 extern const SDL_Color SGE_COLOR_INDIGO;
 extern const SDL_Color SGE_COLOR_PURPLE;
+/**@}*/
 
 /***********************
  * Rendering Functions

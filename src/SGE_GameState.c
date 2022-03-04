@@ -78,7 +78,7 @@ static SGE_GameState *SGE_GetStateFromList(const char *name)
 	SGE_GameState *state = SGE_LLProcess(stateList, SGE_FindState, (void*)name);
 	if(state == NULL)
 	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "%s: State not in list!", __FUNCTION__);
+		// SGE_LogPrintLine(SGE_LOG_WARNING, "%s: State not in list!", __FUNCTION__);
 		return NULL;
 	}
 	return state;
@@ -86,6 +86,12 @@ static SGE_GameState *SGE_GetStateFromList(const char *name)
 
 bool SGE_StateIsRegistered(const char *name)
 {
+	if(!stateList)
+	{
+		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): State list is not initialized.", __FUNCTION__);
+		return false;
+	}
+
 	if(SGE_LLProcess(stateList, SGE_FindState, (void*)name))
 	{
 		return true;
@@ -142,12 +148,23 @@ void SGE_PrintStates()
 
 const char *SGE_GetStateNames()
 {
+	if(!stateList)
+	{
+		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): State list is not initialized.", __FUNCTION__);
+		sprintf(listString, "{}");
+		return listString;
+	}
 	SGE_PrintStates();
 	return listString;
 }
 
 int SGE_GetStateCount()
 {
+	if(!stateList)
+	{
+		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): State list is not initialized.", __FUNCTION__);
+		return 0;
+	}
 	return stateList->size;
 }
 
@@ -155,18 +172,27 @@ int SGE_GetStateCount()
 
 bool SGE_FallbackInit()
 {
-	SGE_LogPrintLine(SGE_LOG_WARNING, "Init is set to NULL, using fallback!");
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "Init is set to NULL, using fallback!");
 	return true;
 }
 
 void SGE_FallbackQuit()
 {
-	SGE_LogPrintLine(SGE_LOG_WARNING, "Quit is set to NULL, using fallback!");
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "Quit is set to NULL, using fallback!");
 }
 
 void SGE_FallbackHandleEvents(){}
 void SGE_FallbackUpdate(){}
 void SGE_FallbackRender(){}
+
+/* A fallback state used when the entry state is not found by SGE_Run() */
+
+static bool SGE_FallbackState_Init()
+{
+	SGE_TextLabel *warningLabel = SGE_CreateTextLabel("Straw Hat Engine", 0, 0, SGE_COLOR_WHITE, NULL);
+	SGE_TextLabelSetPosition(warningLabel, SGE_GetScreenCenterX() - warningLabel->boundBox.w / 2, SGE_GetScreenCenterY() - warningLabel->boundBox.h / 2);
+	return true;
+}
 
 /**
  * \brief Fills an SGE_GameState structure
@@ -195,32 +221,26 @@ static void SGE_SetStateFunctions(SGE_GameState *state, const char *name, bool (
 	state->render = (render == NULL) ? SGE_FallbackRender : render;
 }
 
-/**
- * \brief Sets the current state function pointers in SGE.c
- * 
+/*
+ * Sets the current state function pointers in SGE.c
  * This function is defined in SGE.c
- * 
- * \param name The name of the current state.
- * \param init The init function of the state.
- * \param quit The quit function of the state.
- * \param handleEvents The handleEvents function of the state.
- * \param update The update function of the state.
- * \param render The render function of the state.
  */
 void SGE_SetCurrentStateFunctions(const char *name, bool (*init)(), void (*quit)(), void (*handleEvents)(), void (*update)(), void (*render)());
 
 /**
- * \brief Sets the current state function pointers to a registered state's functions.
+ * \brief Sets the current state function pointers to a registered state's functions to set it as the first game state started by SGE_Run().
  * 
  * \param name The name of a registered state.
  */
-void SGE_SetCurrentStateFunctionsFromList(const char *name)
+void SGE_SetEntryStateFromList(const char *name)
 {
 	SGE_GameState *state = SGE_GetStateFromList(name);
 	if(state == NULL)
 	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "No state set, creating fallback!");
-		SGE_SetCurrentStateFunctions("No State", NULL, NULL, NULL, NULL, NULL);
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Entry state \"%s\" not found, creating fallback!", name);
+		SGE_AddState("Fallback State", SGE_FallbackState_Init, NULL, NULL, NULL, NULL);
+		SGE_SetCurrentStateFunctions("Fallback State", SGE_FallbackState_Init, NULL, NULL, NULL, NULL);
+		SGE_GUI_UpdateCurrentState("Fallback State");
 		return;
 	}
 	SGE_SetCurrentStateFunctions(state->name, state->init, state->quit, state->handleEvents, state->update, state->render);
@@ -280,6 +300,12 @@ void SGE_QuitState(const char *name)
 
 void SGE_SwitchToState(const char *nextStateName, bool quitCurrent)
 {
+	if(!stateList)
+	{
+		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): State list is not initialized.", __FUNCTION__);
+		return;
+	}
+
 	SGE_GameState *nextState = SGE_GetStateFromList(nextStateName);
 	if(nextState == NULL)
 	{
@@ -322,18 +348,30 @@ void SGE_SwitchStates()
 
 bool SGE_StateIsLoaded(const char *name)
 {
+	if(!stateList)
+	{
+		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): State list is not initialized.", __FUNCTION__);
+		return false;
+	}
+
 	SGE_GameState *state = SGE_GetStateFromList(name);
 	if(state != NULL)
 	{
 		return state->loaded;
 	}
 
-	SGE_LogPrintLine(SGE_LOG_WARNING, "%s: \"%s\" not in state list!", __FUNCTION__, name);
+	SGE_LogPrintLine(SGE_LOG_WARNING, "%s(): \"%s\" not in state list!", __FUNCTION__, name);
 	return false;
 }
 
 void SGE_AddState(const char *name, bool (*init)(), void (*quit)(), void (*handleEvents)(), void (*update)(), void (*render)())
 {
+	if(!stateList)
+	{
+		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): State list is not initialized.", __FUNCTION__);
+		return;
+	}
+
 	if(SGE_StateIsRegistered(name))
 	{
 		SGE_LogPrintLine(SGE_LOG_WARNING, "Failed to add state \"%s\", name already exists!", name);

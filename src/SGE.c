@@ -44,6 +44,7 @@ static unsigned int randSeed = 0;
 static bool isVsyncOn    = false;
 static bool isRunning    = true;
 static bool isFullscreen = false;
+static bool isSGEInit       = false;
 
 /* Frame timing data */
 static unsigned int FPSLimit       = 0;
@@ -102,15 +103,12 @@ void SGE_SetCurrentStateFunctions(const char *name, bool (*init)(), void (*quit)
 	currentStateRender = (render == NULL) ? SGE_FallbackRender : render;
 }
 
-/**
- * \brief Sets the current state function pointers to a registered state's functions.
- * 
+/*
+ * Sets the current state function pointers to a registered state's functions to set it as the first state started by SGE_Run().
  * This function is defined in SGE_GameState.c, it is called by SGE_Run() to determine 
  * the first state that SGE should start with.
- * 
- * \param name The name of a registered state.
  */
-void SGE_SetCurrentStateFunctionsFromList(const char *name);
+void SGE_SetEntryStateFromList(const char *name);
 
 /* Defined in SGE_GUI.c */
 bool SGE_GUI_Init();
@@ -122,9 +120,8 @@ void SGE_GUI_Render();
 /*  Updates the current control list pointer in SGE_GUI.c */
 void SGE_GUI_UpdateCurrentState(const char *nextState);
 
-/**
- * \brief Updates the SDL_Renderer to be used by SGE_Graphics.c
- * 
+/*
+ * Updates the SDL_Renderer to be used by SGE_Graphics.c
  * This function is defined in SGE_Graphics.c, it is called whenever the SDL renderer
  * is created, so the graphics functions can have access to the renderer.
  */
@@ -201,6 +198,13 @@ void SGE_SetBackgroundColor(SDL_Color color)
 
  bool SGE_Init(const char *title, int width, int height)
 {
+	if(isSGEInit)
+	{
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Ignoring attempt to initialize SGE when already initialized.");
+		return false;
+	}
+
+	isRunning = true;
 	screenWidth = width;
 	screenHeight = height;
 	
@@ -212,7 +216,7 @@ void SGE_SetBackgroundColor(SDL_Color color)
 	if(window == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to create Game Window! SDL_Error: %s", SDL_GetError());
-		isRunning = SDL_FALSE;
+		isRunning = false;
 		return false;
 	}
 	
@@ -220,7 +224,7 @@ void SGE_SetBackgroundColor(SDL_Color color)
 	if(renderer == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to create Game Renderer! SDL_Error: %s", SDL_GetError());
-		isRunning = SDL_FALSE;
+		isRunning = false;
 		return false;
 	}
 
@@ -287,7 +291,7 @@ void SGE_SetBackgroundColor(SDL_Color color)
 	if(!SGE_GUI_Init())
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to initialize SGE GUI!");
-		isRunning = SDL_FALSE;
+		isRunning = false;
 
 		SDL_DestroyRenderer(renderer);
 		renderer = NULL;
@@ -303,12 +307,19 @@ void SGE_SetBackgroundColor(SDL_Color color)
 		return false;
 	}
 	
+	isSGEInit = true;
 	return true;
 }
 
-void SGE_Run(const char *startStateName)
+void SGE_Run(const char *entryStateName)
 {
-	SGE_SetCurrentStateFunctionsFromList(startStateName);
+	if(!isSGEInit)
+	{
+		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): Cannot start state \"%s\", SGE is not initialized.", __FUNCTION__, entryStateName);
+		return;
+	}
+
+	SGE_SetEntryStateFromList(entryStateName);
 	SGE_GUI_UpdateCurrentState(currentStateName);
 	SGE_InitState(currentStateName);
 
@@ -372,6 +383,8 @@ void SGE_Run(const char *startStateName)
 	TTF_Quit();
 	IMG_Quit();
 	SDL_Quit();
+
+	isSGEInit = false;
 	SGE_LogPrintLine(SGE_LOG_INFO, "Quit SGE.");
 }
 
@@ -386,11 +399,17 @@ void SGE_Quit()
 */
 void SGE_ToggleFullscreen()
 {
+	if(!isSGEInit)
+	{
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot toggle fullscreen, SGE is not initialized.");
+		return;
+	}
+
 	if(!isFullscreen)
 	{
 		if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) == 0)
 		{
-			isFullscreen = SDL_TRUE;
+			isFullscreen = true;
 			SGE_LogPrintLine(SGE_LOG_INFO, "engine->isFullscreen: Toggled to %s", isFullscreen ? "true" : "false");
 		}
 		else
@@ -402,7 +421,7 @@ void SGE_ToggleFullscreen()
 	{
 		if(SDL_SetWindowFullscreen(window, 0) == 0)
 		{
-			isFullscreen = SDL_FALSE;
+			isFullscreen = false;
 			SGE_LogPrintLine(SGE_LOG_INFO, "engine->isFullscreen: Toggled to %s", isFullscreen ? "true" : "false");
 		}
 		else
@@ -418,6 +437,12 @@ void SGE_ToggleFullscreen()
 */
 void SGE_ToggleVsync()
 {
+	if(!isSGEInit)
+	{
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot toggle vsync, SGE is not initialized.");
+		return;
+	}
+
 	/* Save the current renderer's draw blend mode and draw color */
 	SDL_BlendMode blendMode;
 	SDL_GetRenderDrawBlendMode(renderer, &blendMode);
@@ -483,11 +508,13 @@ void SGE_SetTargetFPS(int fps)
 	}
 }
 
-/*
- * Checks for collision between two rectangles.
-*/
-bool SGE_CheckRectsCollision(const SDL_Rect *r1, const SDL_Rect *r2)
+bool SGE_RectInRect(const SDL_Rect *r1, const SDL_Rect *r2)
 {
+	if(r1 == NULL || r2 == NULL)
+	{
+		return false;
+	}
+
 	/* Can be replaced with SDL_HasIntersection() */
 	if(((r1->x >= r2->x) && (r1->x <= (r2->x + r2->w))) || (((r1->x + r1->w) >= r2->x) && ((r1->x + r1->w) <= (r2->x + r2->w))))
 	{
@@ -501,6 +528,11 @@ bool SGE_CheckRectsCollision(const SDL_Rect *r1, const SDL_Rect *r2)
 
 bool SGE_MouseInRect(const SDL_Rect *rect)
 {
+	if(rect == NULL)
+	{
+		return false;
+	}
+
 	if(SDL_PointInRect(&mousePosition, rect))
 	{
 		return true;

@@ -1,6 +1,7 @@
 #include "SGE_GUI.h"
 #include "SGE_Logger.h"
-#include "SGE.h" // To be removed
+#include "SGE.h"
+#include "SGE_GameState.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -121,20 +122,16 @@ SGE_GUI_ControlList *SGE_CreateGUIControlList()
  * This function will delete the GUI control list that is held by the specified state.
  * It is called automatically when a state is unregistered by the SGE_DestroyStateList() function.
  * 
- * \param controls A address of the address of the GUI control list that should be freed.
+ * \param controls The address of the GUI control list that should be freed.
  */
 void SGE_DestroyGUIControlList(SGE_GUI_ControlList *controls)
 {
 	free(controls);
 }
 
-/**
- * \brief Returns the SGE_GUI_ControlList pointer for a registered state.
- * 
+/*
+ * Returns the SGE_GUI_ControlList pointer for a registered state.
  * This function is defined in SGE_GameState.c
- * 
- * \param name The name of the registered state whose GUI control list should be returned.
- * \return The address of the GUI control list of the registered state.
  */
 SGE_GUI_ControlList *SGE_GetStateGUIControlList(const char *name);
 

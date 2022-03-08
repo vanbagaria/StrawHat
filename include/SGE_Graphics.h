@@ -51,6 +51,38 @@ void SGE_DrawLine(int x1, int y1, int x2, int y2);
 void SGE_DrawRect(const SDL_Rect *rect);
 void SGE_DrawFillRect(const SDL_Rect *rect);
 
+/**
+ * \name SGE Circle Quality Constants 
+ * 
+ * Good default values for circle drawing quality.
+ */
+/**@{*/
+#define SGE_CIRCLE_QUALITY_LOW    1.6f
+#define SGE_CIRCLE_QUALITY_MEDIUM 3.1f
+#define SGE_CIRCLE_QUALITY_HIGH   6.2f
+/**@}*/
+
+/**
+ * \brief Maximum resolution for the circumference of a drawn circle.
+ *        Resolution is the number of pixels drawn, it is calculated as (radius x quality).
+ *        A circle radius over 1000 px will limit the circumference to 6200 px.
+ * 
+ */
+#define SGE_CIRCLE_MAX_RESOLUTION 6200
+
+/**
+ * \brief Draws a circle on the screen.
+ * 
+ * \param x The x position of the circle center.
+ * \param y The y position of the circle center.
+ * \param radius The radius of the circle.
+ * \param quality Quality factor for the drawn circle.
+ *                The number of pixels drawn will be (radius x quality).
+ *                Use constants SGE_CIRCLE_QUALITY_LOW, SGE_CIRCLE_QUALITY_MEDIUM and SGE_CIRCLE_QUALITY_HIGH.
+ * 
+ */
+void SGE_DrawCircle(float x, float y, float radius, float quality);
+
 /****************
  * SGE_Texture
  ****************/

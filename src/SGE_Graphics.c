@@ -99,6 +99,37 @@ void SGE_DrawFillRect(const SDL_Rect *rect)
 	SDL_RenderFillRect(renderer, rect);
 }
 
+/**
+ * \brief The calculated pixels for the circle cicrumference.
+ * 
+ */
+static SDL_FPoint circlePoints[SGE_CIRCLE_MAX_RESOLUTION];
+
+void SGE_DrawCircle(float x, float y, float radius, float quality)
+{
+    // Calculate the number of pixels to draw and limit it if too high
+    float resolution = fabsf(radius * quality);
+    if(resolution > SGE_CIRCLE_MAX_RESOLUTION)
+    {
+        resolution = SGE_CIRCLE_MAX_RESOLUTION;
+    }
+    
+    float angle = 0.0f;
+    float step = (2 * M_PI) / resolution; // Number of steps increase with resolution, slowing down the drawing.
+    int i = 0;
+    for(angle = 0; angle < 2 * M_PI; angle += step)
+    {
+        if(i >= SGE_CIRCLE_MAX_RESOLUTION)
+        {
+            i = SGE_CIRCLE_MAX_RESOLUTION - 1;
+        }
+        circlePoints[i].x = x + (radius * SDL_sinf(angle));
+        circlePoints[i].y = y + (radius * SDL_cosf(angle));
+        i++;
+    }
+    SDL_RenderDrawPointsF(renderer, circlePoints, resolution);
+}
+
 /****************
  * SGE_Texture
  ****************/

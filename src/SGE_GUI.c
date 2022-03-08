@@ -223,9 +223,9 @@ static void SGE_GUI_DebugState_Init()
 	SGE_CheckBoxSetPositionNextTo(showBoundsChkBox, showBoundsLabel->boundBox, SGE_CONTROL_DIRECTION_RIGHT_CENTERED, 15, 0);
 	
 	showFrameInfoLbl = SGE_CreateTextLabel("Show Frame Info:", 0, 0, SGE_COLOR_BLACK, debugPanel);
-	SGE_TextLabelSetPositionNextTo(showFrameInfoLbl, showBoundsLabel->boundBox, SGE_CONTROL_DIRECTION_DOWN, 0, 10);
+	SGE_TextLabelSetPositionNextTo(showFrameInfoLbl, showBoundsLabel->boundBox, SGE_CONTROL_DIRECTION_DOWN, 0, 5);
 	showFrameInfoChkBox = SGE_CreateCheckBox(0, 0, debugPanel);
-	SGE_CheckBoxSetPositionNextTo(showFrameInfoChkBox, showFrameInfoLbl->boundBox, SGE_CONTROL_DIRECTION_RIGHT_CENTERED, 15, 0);
+	SGE_CheckBoxSetPositionNextTo(showFrameInfoChkBox, showBoundsChkBox->boundBox, SGE_CONTROL_DIRECTION_DOWN, 0, 5);
 	showFrameInfoChkBox->onMouseUp = onShowFrameInfoToggle;
 	showFrameInfoChkBox->isChecked = true;
 
@@ -1199,7 +1199,7 @@ SGE_CheckBox *SGE_CreateCheckBox(int x, int y, struct SGE_WindowPanel *panel)
 	
 	checkBox->x = x;
 	checkBox->y = y;
-	checkBox->size = 30;
+	checkBox->size = 20;
 	
 	if(checkBox->parentPanel != NULL)
 	{
@@ -1221,8 +1221,8 @@ SGE_CheckBox *SGE_CreateCheckBox(int x, int y, struct SGE_WindowPanel *panel)
 	checkBox->boundBox.w = checkBox->bg.w;
 	checkBox->boundBox.h = checkBox->bg.h;
 	
-	checkBox->check.w = checkBox->size - 10;
-	checkBox->check.h = checkBox->size - 10;
+	checkBox->check.w = checkBox->size - 8;
+	checkBox->check.h = checkBox->size - 8;
 	checkBox->check.x = checkBox->bg.x + (checkBox->bg.w / 2) - (checkBox->check.w / 2);
 	checkBox->check.y = checkBox->bg.y + (checkBox->bg.h / 2) - (checkBox->check.h / 2);
 	
@@ -1336,8 +1336,15 @@ void SGE_CheckBoxRender(SGE_CheckBox *checkBox)
 {
 	int i = 0;
 	
-	/* Draw white checkbox filled background */
-	SGE_SetDrawColorRGBA(255, 255, 255, checkBox->alpha);
+	/* Draw checkbox background */
+	if(checkBox->state == SGE_CONTROL_STATE_CLICKED)
+	{
+		SGE_SetDrawColorRGBA(180, 180, 180, checkBox->alpha);
+	}
+	else
+	{
+		SGE_SetDrawColorRGBA(255, 255, 255, checkBox->alpha);
+	}
 	SGE_DrawFillRect(&checkBox->bg);
 	
 	/* Draw gray checkbox border */

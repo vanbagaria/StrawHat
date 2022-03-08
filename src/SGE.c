@@ -36,15 +36,17 @@ static int screenHeight = 0;
 /* Default engine font */
 static TTF_Font *defaultFont;
 
-/* Default background fill color */
+/* Default background fill color, anything other than black has performance impact. */
 static SDL_Color defaultScreenClearColor;
 
 static unsigned int randSeed = 0;
 
-static bool isVsyncOn    = false;
-static bool isRunning    = true;
-static bool isFullscreen = false;
 static bool isSGEInit       = false;
+static bool shouldQuit      = false;
+static bool isRunning       = false;
+static bool isVsyncOn       = false;
+static bool isTogglingVsync = false;
+static bool isFullscreen    = false;
 
 /* Frame timing data */
 static unsigned int FPSLimit       = 0;
@@ -52,12 +54,12 @@ static unsigned int perFrameTime   = 0;
 static unsigned int frameStartTime = 0;
 static unsigned int lastRenderTime = 0;
 static unsigned int lastFrameTime  = 0;
-static bool frameRateCap = false;
+static bool isFrameRateCapped = false;
 static double deltaTime = 0;
 
 /* Current state function pointers */
 static char currentStateName[20] = "SGE";
-static void (*currentStateInit)()         = NULL;
+static bool (*currentStateInit)()         = NULL;
 static void (*currentStateQuit)()         = NULL;
 static void (*currentStateHandleEvents)() = NULL;
 static void (*currentStateUpdate)()       = NULL;
@@ -76,6 +78,7 @@ void SGE_DestroyStateList();
 void SGE_InitState(const char *name);
 void SGE_QuitState(const char *name);
 void SGE_SwitchStates();
+void SGE_QuitLoadedStates();
 
 /* Returns the name of the current state */
 const char *SGE_GetCurrentStateName()
@@ -204,7 +207,7 @@ void SGE_SetBackgroundColor(SDL_Color color)
 		return false;
 	}
 
-	isRunning = true;
+	shouldQuit = false;
 	screenWidth = width;
 	screenHeight = height;
 	
@@ -216,7 +219,7 @@ void SGE_SetBackgroundColor(SDL_Color color)
 	if(window == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to create Game Window! SDL_Error: %s", SDL_GetError());
-		isRunning = false;
+		shouldQuit = true;
 		return false;
 	}
 	
@@ -224,7 +227,7 @@ void SGE_SetBackgroundColor(SDL_Color color)
 	if(renderer == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to create Game Renderer! SDL_Error: %s", SDL_GetError());
-		isRunning = false;
+		shouldQuit = true;
 		return false;
 	}
 
@@ -234,7 +237,7 @@ void SGE_SetBackgroundColor(SDL_Color color)
 	if(defaultFont == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to load default font! TTF_Error: %s", TTF_GetError());
-		isRunning = false;
+		shouldQuit = true;
 		return false;
 	}
 
@@ -291,7 +294,7 @@ void SGE_SetBackgroundColor(SDL_Color color)
 	if(!SGE_GUI_Init())
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to initialize SGE GUI!");
-		isRunning = false;
+		shouldQuit = true;
 
 		SDL_DestroyRenderer(renderer);
 		renderer = NULL;
@@ -319,11 +322,19 @@ void SGE_Run(const char *entryStateName)
 		return;
 	}
 
+	if(isRunning)
+	{
+		SGE_LogPrintLine(SGE_LOG_WARNING, "%s(): Cannot start state \"%s\", SGE is already running.", __FUNCTION__, entryStateName);
+		return;
+	}
+
+	isRunning = true;
+
 	SGE_SetEntryStateFromList(entryStateName);
 	SGE_GUI_UpdateCurrentState(currentStateName);
 	SGE_InitState(currentStateName);
 
-	while(isRunning)
+	while(!shouldQuit)
 	{
 		/* Calculate Delta time */
 		frameStartTime = SDL_GetTicks();
@@ -336,7 +347,7 @@ void SGE_Run(const char *entryStateName)
 		{
 			if(event.type == SDL_QUIT)
 			{
-				isRunning = false;
+				shouldQuit = true;
 			}
 			SGE_GUI_HandleEvents();
 			currentStateHandleEvents();
@@ -354,7 +365,7 @@ void SGE_Run(const char *entryStateName)
 
 		SGE_SwitchStates();
 		
-		if(frameRateCap)
+		if(isFrameRateCapped)
 		{			
 			/* Cap the framerate by delaying the next frame */
 			lastRenderTime = SDL_GetTicks() - frameStartTime;
@@ -385,13 +396,14 @@ void SGE_Run(const char *entryStateName)
 	SDL_Quit();
 
 	isSGEInit = false;
+	isRunning = false;
 	SGE_LogPrintLine(SGE_LOG_INFO, "Quit SGE.");
 }
 
 void SGE_Quit()
 {
 	SGE_LogPrintLine(SGE_LOG_INFO, "SGE Quit Requested...");
-	isRunning = false;
+	shouldQuit = true;
 }
 
 /*
@@ -401,7 +413,7 @@ void SGE_ToggleFullscreen()
 {
 	if(!isSGEInit)
 	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot toggle fullscreen, SGE is not initialized.");
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot toggle Full Screen, SGE is not initialized.");
 		return;
 	}
 
@@ -410,11 +422,11 @@ void SGE_ToggleFullscreen()
 		if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN) == 0)
 		{
 			isFullscreen = true;
-			SGE_LogPrintLine(SGE_LOG_INFO, "engine->isFullscreen: Toggled to %s", isFullscreen ? "true" : "false");
+			SGE_LogPrintLine(SGE_LOG_INFO, "Toggled Full Screen ON.");
 		}
 		else
 		{
-			SGE_LogPrintLine(SGE_LOG_WARNING, "Failed to enter Fullscreen! SDL_Error: %s", SDL_GetError());
+			SGE_LogPrintLine(SGE_LOG_WARNING, "Failed to enter Full Screen! SDL_Error: %s", SDL_GetError());
 		}
 	}
 	else
@@ -422,11 +434,11 @@ void SGE_ToggleFullscreen()
 		if(SDL_SetWindowFullscreen(window, 0) == 0)
 		{
 			isFullscreen = false;
-			SGE_LogPrintLine(SGE_LOG_INFO, "engine->isFullscreen: Toggled to %s", isFullscreen ? "true" : "false");
+			SGE_LogPrintLine(SGE_LOG_INFO, "Toggled Full Screen OFF.");
 		}
 		else
 		{
-			SGE_LogPrintLine(SGE_LOG_WARNING, "Failed to leave Fullscreen! SDL_Error: %s", SDL_GetError());
+			SGE_LogPrintLine(SGE_LOG_WARNING, "Failed to leave Full Screen! SDL_Error: %s", SDL_GetError());
 		}
 	}
 }
@@ -437,9 +449,17 @@ void SGE_ToggleFullscreen()
 */
 void SGE_ToggleVsync()
 {
+	if(isTogglingVsync)
+	{
+		return;
+	}
+	
+	isTogglingVsync = true;
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "Setting V-SYNC %s...\n", isVsyncOn ? "OFF" : "ON");
+
 	if(!isSGEInit)
 	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot toggle vsync, SGE is not initialized.");
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot toggle V-SYNC, SGE is not initialized.");
 		return;
 	}
 
@@ -449,8 +469,8 @@ void SGE_ToggleVsync()
 	SDL_Color drawColor;
 	SDL_GetRenderDrawColor(renderer, &drawColor.r, &drawColor.g, &drawColor.b, &drawColor.a);
 	
-	/* Quit the current state and the GUI to free all textures */
-	SGE_QuitState(currentStateName);
+	/* Quit all currently loaded states and the GUI to free all textures */
+	SGE_QuitLoadedStates();
 	SGE_GUI_Quit();
 	
 	SDL_DestroyRenderer(renderer);
@@ -477,34 +497,38 @@ void SGE_ToggleVsync()
 	
 	if(isVsyncOn)
 	{
-		frameRateCap = false;
-		SGE_LogPrintLine(SGE_LOG_INFO, "Turned OFF frame rate cap!");
+		if(isFrameRateCapped)
+		{
+			isFrameRateCapped = false;
+			SGE_LogPrintLine(SGE_LOG_INFO, "Turned off frame rate limiter.");
+		}
 	}
-	SGE_LogPrintLine(SGE_LOG_INFO, "Toggled VSYNC %s!\n", isVsyncOn ? "ON" : "OFF");
+	SGE_LogPrintLine(SGE_LOG_INFO, "Toggled V-SYNC %s.\n", isVsyncOn ? "ON" : "OFF");
+	isTogglingVsync = false;
 }
 
 /*
- * Sets the frame rate cap to "fps", or disables capping if "fps" is 0.
+ * Sets the frame rate limit to "fps", or disables limit if "fps" is 0.
 */
 void SGE_SetTargetFPS(int fps)
 {
 	if(isVsyncOn)
 	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "Can't set FPS, Vsync is ON!");
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Can't set FPS, V-SYNC is ON!");
 		return;
 	}
 	
 	if(fps == 0)
 	{
-		frameRateCap = false;
-		SGE_LogPrintLine(SGE_LOG_INFO, "Turned OFF frame rate cap!");
+		isFrameRateCapped = false;
+		SGE_LogPrintLine(SGE_LOG_INFO, "Turned off frame rate limiter.");
 	}
 	else
 	{
-		frameRateCap = true;
+		isFrameRateCapped = true;
 		FPSLimit = fps;
 		perFrameTime = 1000 / fps;
-		SGE_LogPrintLine(SGE_LOG_INFO, "Target FPS set to %d", FPSLimit);
+		SGE_LogPrintLine(SGE_LOG_INFO, "Target FPS set to %d.", FPSLimit);
 	}
 }
 

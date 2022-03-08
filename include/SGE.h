@@ -65,6 +65,8 @@ void SGE_SetTargetFPS(int fps);
 
 /**
  * \brief Toggles vsync on and off for the game.
+ *        Do not call this from a state's init or quit functions,
+ *        as it free's all loaded states and reinitalizes the current one.
  * 
  */
 void SGE_ToggleVsync();

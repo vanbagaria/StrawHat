@@ -121,7 +121,7 @@ SGE_GUI_ControlList *SGE_GetStateGUIControlList(const char *name)
  * \param list The state list.
  * \param currentNode The current state when iterating with LLProcess()
  * \param processData Unused.
- * \return void* 
+ * \return NULL to keep iterating over entire list.
  */
 static void *SGE_PrintStateName(SGE_LinkedList *list, SGE_LLNode *currentNode, void *processData)
 {
@@ -187,11 +187,20 @@ void SGE_FallbackRender(){}
 
 /* A fallback state used when the entry state is not found by SGE_Run() */
 
+static TTF_Font *font = NULL;
+
 static bool SGE_FallbackState_Init()
 {
-	SGE_TextLabel *warningLabel = SGE_CreateTextLabel("Straw Hat Engine", 0, 0, SGE_COLOR_WHITE, NULL);
+	font = TTF_OpenFont("assets/FreeSansBold.ttf", 32);
+	SGE_SetTextureWordWrap(SGE_GetScreenWidth());
+	SGE_TextLabel *warningLabel = SGE_CreateTextLabelCustom("Straw Hat Game Engine", 0, 0, SGE_COLOR_WHITE, font, NULL);
 	SGE_TextLabelSetPosition(warningLabel, SGE_GetScreenCenterX() - warningLabel->boundBox.w / 2, SGE_GetScreenCenterY() - warningLabel->boundBox.h / 2);
 	return true;
+}
+
+static void SGE_FallbackState_Quit()
+{
+	TTF_CloseFont(font);
 }
 
 /**
@@ -238,8 +247,8 @@ void SGE_SetEntryStateFromList(const char *name)
 	if(state == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_WARNING, "Entry state \"%s\" not found, creating fallback!", name);
-		SGE_AddState("Fallback State", SGE_FallbackState_Init, NULL, NULL, NULL, NULL);
-		SGE_SetCurrentStateFunctions("Fallback State", SGE_FallbackState_Init, NULL, NULL, NULL, NULL);
+		SGE_AddState("Fallback State", SGE_FallbackState_Init, SGE_FallbackState_Quit, NULL, NULL, NULL);
+		SGE_SetCurrentStateFunctions("Fallback State", SGE_FallbackState_Init, SGE_FallbackState_Quit, NULL, NULL, NULL);
 		SGE_GUI_UpdateCurrentState("Fallback State");
 		return;
 	}
@@ -393,15 +402,15 @@ void SGE_AddState(const char *name, bool (*init)(), void (*quit)(), void (*handl
  * 
  * \param data The current state when iterating over state list with LLFree()
  */
-void SGE_FreeState(void *data)
+void SGE_LLFreeState(void *data)
 {
 	SGE_GameState *state = data;
 	if(state->loaded)
 	{
 		SGE_QuitState(state->name);
-		SGE_DestroyGUIControlList(state->controls);
-		state->controls = NULL;
 	}
+	SGE_DestroyGUIControlList(state->controls);
+	state->controls = NULL;
 	SGE_LogPrintLine(SGE_LOG_DEBUG, "Unregistered state: %s", state->name);
 	free(state);
 }
@@ -417,7 +426,7 @@ void SGE_CreateStateList()
 		SGE_LogPrintLine(SGE_LOG_WARNING, "Can't create state list, state list already exists.");
 		return;
 	}
-	stateList = SGE_LLCreate(SGE_FreeState);
+	stateList = SGE_LLCreate(SGE_LLFreeState);
 }
 
 /**
@@ -428,4 +437,27 @@ void SGE_CreateStateList()
 void SGE_DestroyStateList()
 {
 	stateList = SGE_LLDestroy(stateList);
+}
+
+/**
+ * \brief Callback for LLProcess() that quits a loaded state.
+ * 
+ */
+void *SGE_LLQuitLoadedState(SGE_LinkedList *list, SGE_LLNode *currentNode, void *processData)
+{
+	SGE_GameState *currentListState = currentNode->data;
+	if(currentListState->loaded)
+	{
+		SGE_QuitState(currentListState->name);
+	}
+	return NULL;
+}
+
+/**
+ * \brief Quits all game states that are currently loaded.
+ * 
+ */
+void SGE_QuitLoadedStates()
+{
+	SGE_LLProcess(stateList, SGE_LLQuitLoadedState, NULL);
 }

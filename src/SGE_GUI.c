@@ -196,10 +196,10 @@ static void SGE_GUI_DebugState_Init()
 	currentStateControls = &debugStateControls;
 
 	debugStateLabel = SGE_CreateTextLabel("Debug State (F1)", 0, 0, SGE_COLOR_GREEN, NULL);
-	SGE_TextLabelSetPosition(debugStateLabel, 0, SGE_GetScreenHeight() - debugStateLabel->boundBox.h);
+	SGE_TextLabelSetPosition(debugStateLabel, 15, SGE_GetScreenHeight() - debugStateLabel->boundBox.h - 15);
 
 	/* Create the debug panel */
-	debugPanel = SGE_CreateWindowPanel("Debug Panel (F2)", 0, 0, 320, 240);
+	debugPanel = SGE_CreateWindowPanel("Debug Panel (F2)", 0, 0, 240, 200);
 	debugPanel->isVisible = false;
 	//debugPanel->borderColor = SGE_COLOR_GRAY;
 	debugPanel->alpha = 200;
@@ -233,17 +233,17 @@ static void SGE_GUI_DebugState_Init()
 	deltaLabel = SGE_CreateTextLabel(" ", 0, 0, SGE_COLOR_WHITE, NULL);
 	SGE_TextLabelSetPositionNextTo(deltaLabel, debugStateLabel->boundBox, SGE_CONTROL_DIRECTION_UP, 0, 0);
 	SGE_TextLabelSetMode(deltaLabel, SGE_TEXT_MODE_SHADED);
-	SGE_TextLabelSetBGColor(deltaLabel, SGE_COLOR_BLACK);
+	// SGE_TextLabelSetBGColor(deltaLabel, SGE_COLOR_BLACK);
 
 	fpsLabel = SGE_CreateTextLabel(" ", 0, 0, SGE_COLOR_WHITE, NULL);
 	SGE_TextLabelSetPositionNextTo(fpsLabel, deltaLabel->boundBox, SGE_CONTROL_DIRECTION_UP, 0, 0);
 	SGE_TextLabelSetMode(fpsLabel, SGE_TEXT_MODE_SHADED);
-	SGE_TextLabelSetBGColor(fpsLabel, SGE_COLOR_BLACK);
+	// SGE_TextLabelSetBGColor(fpsLabel, SGE_COLOR_BLACK);
 
 	vsyncLabel = SGE_CreateTextLabel(" ", 0, 0, SGE_COLOR_WHITE, NULL);
 	SGE_TextLabelSetPositionNextTo(vsyncLabel, fpsLabel->boundBox, SGE_CONTROL_DIRECTION_UP, 0, 0);
 	SGE_TextLabelSetMode(vsyncLabel, SGE_TEXT_MODE_SHADED);
-	SGE_TextLabelSetBGColor(vsyncLabel, SGE_COLOR_BLACK);
+	// SGE_TextLabelSetBGColor(vsyncLabel, SGE_COLOR_BLACK);
 
 	currentStateControls = tempCurrentStateControls;
 }
@@ -268,13 +268,13 @@ static void SGE_GUI_DebugState_Update()
 
 		if((SDL_GetTicks() - lastLabelUpdateTime) > labelUpdateInterval)
 		{
-			SGE_TextLabelSetTextf(deltaLabel, "dt: %.3f s", SGE_GetDeltaTime());
-			SGE_TextLabelSetTextf(fpsLabel, "fps: %d", countedFPS);
+			SGE_TextLabelSetTextf(deltaLabel, "Delta: %.3f s", SGE_GetDeltaTime());
+			SGE_TextLabelSetTextf(fpsLabel, "FPS: %d", countedFPS);
 			if(SGE_VsyncIsOn()) {
-				SGE_TextLabelSetTextf(vsyncLabel, "vsync: on");
+				SGE_TextLabelSetTextf(vsyncLabel, "V-SYNC: ON");
 			}
 			else {
-				SGE_TextLabelSetTextf(vsyncLabel, "vsync: off");
+				SGE_TextLabelSetTextf(vsyncLabel, "V-SYNC: OFF");
 			}
 			lastLabelUpdateTime = SDL_GetTicks();
 		}
@@ -298,7 +298,7 @@ static void printPanelsStr()
 	if(panelCount > 0)
 	{
 		/* Don't update the panel list string if handling debug state controls */
-		if(strcmp(panels[0]->titleStr, "Debug Panel") == 0)
+		if(panels[0] == debugPanel)
 		{
 			return;
 		}
@@ -306,7 +306,7 @@ static void printPanelsStr()
 		/* For more than one panels */
 		if(panelCount > 1)
 		{
-			sprintf(panelsListStr, "Panels: {%s: %s, ", panels[0]->titleStr, panels[0]->isActive ? "Active" : "Inactive");
+			sprintf(panelsListStr, "{%s: %s, ", panels[0]->titleStr, panels[0]->isActive ? "Active" : "Inactive");
 			for(i = 1; i < panelCount - 1; i++)
 			{
 				sprintf(tempStr, "%s: %s, ", panels[i]->titleStr, panels[i]->isActive ? "Active" : "Inactive");
@@ -317,12 +317,12 @@ static void printPanelsStr()
 		}
 		else /* For single panel */
 		{
-			sprintf(panelsListStr, "Panels: {%s: %s}", panels[0]->titleStr, panels[0]->isActive ? "Active" : "Inactive");
+			sprintf(panelsListStr, "{%s: %s}", panels[0]->titleStr, panels[0]->isActive ? "Active" : "Inactive");
 		}
 	}
 	else /* For no panels */
 	{
-		sprintf(panelsListStr, "Panels: {}");
+		sprintf(panelsListStr, "{}");
 	}
 }
 
@@ -508,8 +508,8 @@ void SGE_GUI_HandleEvents()
 		if(SGE_GetSDLEvent()->key.keysym.sym == SDLK_F1)
 		{
 			SGE_SetTextureWordWrap(500);
-			SGE_TextLabelSetText(panelListLabel, panelsListStr);
-			SGE_TextLabelSetText(stateListLabel, SGE_GetStateNames());
+			SGE_TextLabelSetTextf(panelListLabel, "Panels: %s", panelsListStr);
+			SGE_TextLabelSetTextf(stateListLabel, "States: %s", SGE_GetStateNames());
 			showDebugState = !showDebugState;
 		}
 		

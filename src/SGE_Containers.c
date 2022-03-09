@@ -8,7 +8,7 @@ SGE_LinkedList *SGE_LLCreate(void (*deallocator)(void *data))
 {
     SGE_LinkedList *list = (SGE_LinkedList*)malloc(sizeof(SGE_LinkedList));
     list->head = NULL;
-    list->size = 0;
+    list->count = 0;
     list->deallocator = deallocator;
     return list;
 }
@@ -25,7 +25,7 @@ SGE_LinkedList *SGE_LLDestroy(SGE_LinkedList *list)
 
 void SGE_LLClear(SGE_LinkedList *list)
 {
-    int count = 0;
+    int freeCount = 0;
     SGE_LLNode *current = list->head;
     while (current != NULL)
     {
@@ -36,13 +36,13 @@ void SGE_LLClear(SGE_LinkedList *list)
         }
         free(current);
         current = temp;
-        count++;
+        freeCount++;
         list->head = current;
-        list->size--;
+        list->count--;
     }
-    SGE_LogPrintLine(SGE_LOG_DEBUG, "Freed linked list with %d nodes!", count);
+    SGE_LogPrintLine(SGE_LOG_DEBUG, "Freed linked list with %d nodes!", freeCount);
     list->head = NULL;
-    list->size = 0;
+    list->count = 0;
 }
 
 void SGE_LLPush(SGE_LinkedList *list, void *data)
@@ -70,7 +70,7 @@ void SGE_LLPush(SGE_LinkedList *list, void *data)
         }
         current->next = newNode;
     }
-    list->size++;
+    list->count++;
 }
 
 void *SGE_LLGetLast(SGE_LinkedList *list)
@@ -209,7 +209,12 @@ void *SGE_LLProcess(SGE_LinkedList *list, void *(*processFunc)(SGE_LinkedList *l
 
     return NULL;
 }
-
+/**
+ * \brief Prints the contents of a linked list to debug output.
+ * 
+ * \param list The list whose contents should be print.
+ * \param printFunc Callback function that must print the data passed for each node.
+ */
 void SGE_LLPrint(SGE_LinkedList *list, void (*printFunc)(void *data))
 {
     if(list == NULL)
@@ -232,16 +237,34 @@ void SGE_LLPrint(SGE_LinkedList *list, void (*printFunc)(void *data))
     SGE_printf(SGE_LOG_DEBUG, "}\n");
 }
 
+/**
+ * \brief Callback for SGE_LLPrint() when linked list contains integers. 
+ * 
+ * \param data The data pointer in the currently printing node.
+ */
 void SGE_LLPrintInt(void *data)
 {
     SGE_printf(SGE_LOG_DEBUG, "%d", (int*)data);
 }
 
+/**
+ * \brief Callback for SGE_LLPrint() when linked list contains strings. 
+ * 
+ * \param data The data pointer in the currently printing node.
+ */
 void SGE_LLPrintStr(void *data)
 {
     SGE_printf(SGE_LOG_DEBUG, "\"%s\"", (char*)data);
 }
 
+/**
+ * \brief Callback for SGE_LLProcess() that searches for a string in a list of strings.
+ * 
+ * \param list A list containing strings.
+ * \param currentNode The node that is currently being processed.
+ * \param processData The string to search for.
+ * \return NULL as it searches the entire list.
+ */
 void *SGE_LLSearchStr(SGE_LinkedList *list, SGE_LLNode *currentNode, void *processData)
 {
     char *currentStr = currentNode->data;
@@ -255,6 +278,14 @@ void *SGE_LLSearchStr(SGE_LinkedList *list, SGE_LLNode *currentNode, void *proce
     return NULL;
 }
 
+/**
+ * \brief Callback for SGE_LLProcess() that searches for, and removes a string from a list of strings.
+ * 
+ * \param list A list containing strings.
+ * \param currentNode The node that is currently being processed.
+ * \param processData The string to search for.
+ * \return NULL as it searches the entire list.
+ */
 void *SGE_LLSearchRemoveStr(SGE_LinkedList *list,  SGE_LLNode *currentNode, void *processData)
 {
     if(processData == NULL)

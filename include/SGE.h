@@ -13,6 +13,35 @@
 #include <stdbool.h>
 
 /**
+ * \brief Configuration structure that contains initialization settings for SGE_Init().
+ * 
+ */
+typedef struct
+{
+    int x; /**< The x position of the game window relative to top-left of display. */
+    int y; /**< The y position of the game window relative to top-left of display. */
+    bool fullscreen; /**< Whether or not the game window should be full screen. */
+    bool resizable; /**< Whether or not the game window should be resizable. */
+    bool borderless; /**< Whether or not the game window has border decorations. */
+    bool vsync; /**< Whether or not the game window should have vertical sync enabled. */
+} SGE_InitConfig;
+
+/**
+ * \brief Creates and returns an SGE init configuration with default values.
+ * 
+ * The default configuration values are:
+ * x = SDL_WINDOWPOS_CENTERED;
+ * y = SDL_WINDOWPOS_CENTERED;
+ * fullscreen = false;
+ * resizable = false;
+ * borderless = false;
+ * vsync = true;
+ * 
+ * \return An SGE_InitConfig structure filled with default initialization values.
+ */
+SGE_InitConfig SGE_CreateInitConfig();
+
+/**
  * \brief Initializes SGE and creates the game window, must be called once before calling SGE_Run().
  * 
  * SGE_Run() must be called after a call to this function to start a user registered game state.
@@ -20,11 +49,13 @@
  * \param title The title of the game window.
  * \param width The width of the game window in pixels.
  * \param height The height of the game window in pixels.
+ * \param config The init configuration settings, NULL for default settings.
  * \return true if initialization is successful, false if there was an error.
  * 
+ * \sa SGE_CreateInitConfig
  * \sa SGE_Run
  */
-bool SGE_Init(const char *title, int width, int height);
+bool SGE_Init(const char *title, int width, int height, SGE_InitConfig *config);
 
 /**
  * \brief Starts a registered game state after SGE is initialized with SGE_Init(). 
@@ -53,8 +84,8 @@ void SGE_Quit();
  * \brief Sets the background color of the game window to the given RGB color.
  * 
  * \param r The red component of the color. (0 to 255)
- * \param g The green component of the color. (0-255)
- * \param b The blue component of the color. (0-255)
+ * \param g The green component of the color. (0 to 255)
+ * \param b The blue component of the color. (0 to 255)
  */
 void SGE_SetBackgroundColor(Uint8 r, Uint8 g, Uint8 b);
 
@@ -85,13 +116,20 @@ void SGE_ToggleVsync();
  * 
  * \return true if vsync is on, false if vsync is off.
  */
-bool SGE_VsyncIsOn();
+bool SGE_IsVsync();
 
 /**
- * \brief Toggles fullscreen for the game window.
+ * \brief Toggles fullscreen mode for the game.
  * 
  */
 void SGE_ToggleFullscreen();
+
+/**
+ * \brief Returns whether the game is currently in full screen mode.
+ * 
+ * \return true if game is in full screen mode, false if game is in windowed mode.
+ */
+bool SGE_IsFullscreen();
 
 /**
  * \brief Returns the width of the game window.

@@ -9,7 +9,7 @@
 static FILE *logStream = NULL;
 
 /* Log level filter flag that decides what messages are printed */
-static int logFilterFlag =  SGE_LOG_INFO | SGE_LOG_DEBUG | SGE_LOG_WARNING | SGE_LOG_ERROR;
+static int logFilterFlag =  SGE_LOG_CLEAN;
 
 void SGE_LogSetFilter(int flags)
 {

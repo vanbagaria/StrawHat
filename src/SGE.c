@@ -145,9 +145,14 @@ double SGE_GetDeltaTime()
 	return deltaTime;
 }
 
-bool SGE_VsyncIsOn()
+bool SGE_IsVsync()
 {
 	return isVsyncOn;
+}
+
+bool SGE_IsFullscreen()
+{
+	return isFullscreen;
 }
 
 bool SGE_KeyIsPressed(SDL_Scancode scancode)
@@ -206,12 +211,55 @@ void SGE_SetBackgroundColorSDL(SDL_Color color)
 	defaultScreenClearColor = color;
 }
 
- bool SGE_Init(const char *title, int width, int height)
+SGE_InitConfig SGE_CreateInitConfig()
+{
+    SGE_InitConfig config;
+    config.x = SDL_WINDOWPOS_CENTERED;
+    config.y = SDL_WINDOWPOS_CENTERED;
+    config.fullscreen = false;
+    config.resizable = false;
+	config.borderless = false;
+    config.vsync = true;
+	return config;
+}
+
+ bool SGE_Init(const char *title, int width, int height, SGE_InitConfig *config)
 {
 	if(isSGEInit)
 	{
 		SGE_LogPrintLine(SGE_LOG_WARNING, "Ignoring attempt to initialize SGE when already initialized.");
 		return false;
+	}
+
+	SGE_InitConfig conf;
+	if(!config)
+	{
+		conf = SGE_CreateInitConfig();
+	}
+	else
+	{
+		conf = *(config);
+	}
+
+	SDL_WindowFlags windowFlags = SDL_WINDOW_SHOWN;
+	if(conf.fullscreen)
+	{
+		windowFlags |= SDL_WINDOW_FULLSCREEN;
+	}
+	if(conf.resizable)
+	{
+		windowFlags |= SDL_WINDOW_RESIZABLE;
+	}
+	if(conf.borderless)
+	{
+		windowFlags |= SDL_WINDOW_BORDERLESS;
+	}
+
+	SDL_RendererFlags rendererFlags = SDL_RENDERER_ACCELERATED;
+	if(conf.vsync)
+	{
+		rendererFlags |= SDL_RENDERER_PRESENTVSYNC;
+		isVsyncOn = true;
 	}
 
 	shouldQuit = false;
@@ -222,7 +270,7 @@ void SGE_SetBackgroundColorSDL(SDL_Color color)
 	IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_WEBP);
 	TTF_Init();
 
-	window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, SDL_WINDOW_SHOWN);
+	window = SDL_CreateWindow(title, conf.x, conf.y, screenWidth, screenHeight, windowFlags);
 	if(window == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to create Game Window! SDL_Error: %s", SDL_GetError());
@@ -230,7 +278,7 @@ void SGE_SetBackgroundColorSDL(SDL_Color color)
 		return false;
 	}
 	
-	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+	renderer = SDL_CreateRenderer(window, -1, rendererFlags);
 	if(renderer == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to create Game Renderer! SDL_Error: %s", SDL_GetError());

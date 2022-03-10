@@ -44,8 +44,8 @@ extern const SDL_Color SGE_COLOR_PURPLE;
  * \brief Fills the screen with the given RGB color.
  * 
  * \param r The red component of the color. (0 to 255)
- * \param g The green component of the color. (0-255)
- * \param b The blue component of the color. (0-255)
+ * \param g The green component of the color. (0 to 255)
+ * \param b The blue component of the color. (0 to 255)
  */
 void SGE_ClearScreen(Uint8 r, Uint8 g, Uint8 b);
 
@@ -60,8 +60,8 @@ void SGE_ClearScreenSDL(SDL_Color color);
  * \brief Sets the color used for drawing to the given RGBA color.
  * 
  * \param r The red component of the color. (0 to 255)
- * \param g The green component of the color. (0-255)
- * \param b The blue component of the color. (0-255)
+ * \param g The green component of the color. (0 to 255)
+ * \param b The blue component of the color. (0 to 255)
  * \param a The transparency of the drawn color.
  * 
  * \sa SGE_SetDrawBlendMode

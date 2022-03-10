@@ -47,24 +47,24 @@ void SGE_Graphics_UpdateSDLRenderer()
  * Rendering Functions
  ***********************/
 
-void SGE_ClearScreenRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+void SGE_ClearScreen(Uint8 r, Uint8 g, Uint8 b)
 {
-	SDL_SetRenderDrawColor(renderer, r, g, b, a);
+	SDL_SetRenderDrawColor(renderer, r, g, b, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(renderer);
 }
 
-void SGE_ClearScreen(SDL_Color color)
+void SGE_ClearScreenSDL(SDL_Color color)
 {
-	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(renderer);
 }
 
-void SGE_SetDrawColorRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+void SGE_SetDrawColor(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
 	SDL_SetRenderDrawColor(renderer, r, g, b, a);
 }
 
-void SGE_SetDrawColor(SDL_Color color)
+void SGE_SetDrawColorSDL(SDL_Color color)
 {
 	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 }
@@ -79,25 +79,41 @@ void SGE_SetDrawClipRect(const SDL_Rect *rect)
 	SDL_RenderSetClipRect(renderer, rect);
 }
 
-void SGE_DrawPoint(int x, int y)
+void SGE_DrawPoint(float x, float y)
 {
-	SDL_RenderDrawPoint(renderer, x, y);
+	SDL_RenderDrawPointF(renderer, x, y);
 }
 
-void SGE_DrawLine(int x1, int y1, int x2, int y2)
+void SGE_DrawLine(float x1, float y1, float x2, float y2)
 {
-	SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
+	SDL_RenderDrawLineF(renderer, x1, y1, x2, y2);
 }
 
-void SGE_DrawRect(const SDL_Rect *rect)
+void SGE_DrawRect(float x, float y, float w, float h)
+{
+	SDL_FRect rect = {x - (w / 2), y - (h / 2), w, h};
+	SDL_RenderDrawRectF(renderer, &rect);
+}
+
+void SGE_DrawRectSDL(const SDL_Rect *rect)
 {
 	SDL_RenderDrawRect(renderer, rect);
 }
 
-void SGE_DrawFillRect(const SDL_Rect *rect)
+void SGE_DrawFillRect(float x, float y, float w, float h)
+{
+	SDL_FRect rect = {x - (w / 2), y - (h / 2), w, h};
+	SDL_RenderFillRectF(renderer, &rect);
+}
+
+void SGE_DrawFillRectSDL(const SDL_Rect *rect)
 {
 	SDL_RenderFillRect(renderer, rect);
 }
+
+/*****************************************
+ * Custom Circle Drawing Function (Slow)
+ *****************************************/
 
 /**
  * \brief The calculated pixels for the circle cicrumference.

@@ -40,16 +40,111 @@ extern const SDL_Color SGE_COLOR_PURPLE;
  * Rendering Functions
  ***********************/
 
-void SGE_ClearScreenRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-void SGE_ClearScreen(SDL_Color color);
-void SGE_SetDrawColorRGBA(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-void SGE_SetDrawColor(SDL_Color color);
+/**
+ * \brief Fills the screen with the given RGB color.
+ * 
+ * \param r The red component of the color. (0 to 255)
+ * \param g The green component of the color. (0-255)
+ * \param b The blue component of the color. (0-255)
+ */
+void SGE_ClearScreen(Uint8 r, Uint8 g, Uint8 b);
+
+/**
+ * \brief Fills the screen with the given SDL_Color. Can use color constants from SGE_Graphics.h
+ * 
+ * \param color The SDL_Color to fill the screen with.
+ */
+void SGE_ClearScreenSDL(SDL_Color color);
+
+/**
+ * \brief Sets the color used for drawing to the given RGBA color.
+ * 
+ * \param r The red component of the color. (0 to 255)
+ * \param g The green component of the color. (0-255)
+ * \param b The blue component of the color. (0-255)
+ * \param a The transparency of the drawn color.
+ * 
+ * \sa SGE_SetDrawBlendMode
+ */
+void SGE_SetDrawColor(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+
+/**
+ * \brief Sets the color used for drawing to the given SDL_Color. Can use color constants from SGE_Graphics.h
+ * 
+ * \param color The SDL_Color to use as the drawing color.
+ */
+void SGE_SetDrawColorSDL(SDL_Color color);
+
+/**
+ * \brief Sets the blend mode used for drawing.
+ * 
+ * \param mode The SDL_BlendMode used for drawing.
+ */
 void SGE_SetDrawBlendMode(SDL_BlendMode mode);
+
+/**
+ * \brief Sets the screen clipping rectangle for drawing.
+ *        Anything outside the rectangle is not drawn on screen.
+ * 
+ * \param rect Pointer to the rectangle to set as the screen clipping region. NULL to disable clipping.
+ */
 void SGE_SetDrawClipRect(const SDL_Rect *rect);
-void SGE_DrawPoint(int x, int y);
-void SGE_DrawLine(int x1, int y1, int x2, int y2);
-void SGE_DrawRect(const SDL_Rect *rect);
-void SGE_DrawFillRect(const SDL_Rect *rect);
+
+/**
+ * \brief Draws a point on the screen at the given position.
+ * 
+ * \param x The x position of the point to draw.
+ * \param y The y position of the point to draw.
+ */
+void SGE_DrawPoint(float x, float y);
+
+/**
+ * \brief Draws a line on the screen between the two given points.
+ * 
+ * \param x1 The x position of the start point.
+ * \param y1 The y position of the start point.
+ * \param x2 The x position of the end point.
+ * \param y2 The y position of the end point.
+ */
+void SGE_DrawLine(float x1, float y1, float x2, float y2);
+
+/**
+ * \brief Draws a given rectangle on the screen.
+ * 
+ * \param x The x position of the center of the rectangle.
+ * \param y The y position of the center of the rectangle.
+ * \param w The width of the rectangle.
+ * \param h The height of the rectangle.
+ */
+void SGE_DrawRect(float x, float y, float w, float h);
+
+/**
+ * \brief Draws a given SDL_Rect on the screen.
+ * 
+ * \param rect Pointer to the SDL_Rect to draw.
+ */
+void SGE_DrawRectSDL(const SDL_Rect *rect);
+
+/**
+ * \brief Draws a filled rectangle on the screen.
+ * 
+ * \param x The x position of the center of the rectangle.
+ * \param y The y position of the center of the rectangle.
+ * \param w The width of the rectangle.
+ * \param h The height of the rectangle.
+ */
+void SGE_DrawFillRect(float x, float y, float w, float h);
+
+/**
+ * \brief Draws a given SDL_Rect filled on the screen.
+ * 
+ * \param rect Pointer to the SDL_Rect to draw.
+ */
+void SGE_DrawFillRectSDL(const SDL_Rect *rect);
+
+/*****************************************
+ * Custom Circle Drawing Function (Slow)
+ *****************************************/
 
 /**
  * \name SGE Circle Quality Constants 
@@ -83,9 +178,9 @@ void SGE_DrawFillRect(const SDL_Rect *rect);
  */
 void SGE_DrawCircle(float x, float y, float radius, float quality);
 
-/****************
- * SGE_Texture
- ****************/
+/*********************
+ * Texture Rendering
+ *********************/
 
 typedef struct
 {

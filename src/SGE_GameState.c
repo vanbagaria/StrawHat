@@ -165,7 +165,7 @@ int SGE_GetStateCount()
 		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): State list is not initialized.", __FUNCTION__);
 		return 0;
 	}
-	return stateList->size;
+	return stateList->count;
 }
 
 /* Fallbacks used when a state is created with NULL function pointers */

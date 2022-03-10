@@ -194,7 +194,14 @@ int SGE_GetScreenCenterY()
 	return screenHeight / 2;
 }
 
-void SGE_SetBackgroundColor(SDL_Color color)
+void SGE_SetBackgroundColor(Uint8 r, Uint8 g, Uint8 b)
+{
+	defaultScreenClearColor.r = r;
+	defaultScreenClearColor.g = g;
+	defaultScreenClearColor.b = b;
+}
+
+void SGE_SetBackgroundColorSDL(SDL_Color color)
 {
 	defaultScreenClearColor = color;
 }
@@ -358,7 +365,7 @@ void SGE_Run(const char *entryStateName)
 		currentStateUpdate();
 		
 		/* Rendering */
-		SGE_ClearScreen(defaultScreenClearColor);
+		SGE_ClearScreenSDL(defaultScreenClearColor);
 		currentStateRender();
 		SGE_GUI_Render();
 		SDL_RenderPresent(renderer);

@@ -1097,28 +1097,28 @@ void SGE_ButtonRender(SGE_Button *button)
 	int i = 0;
 	
 	/* Draw filled button background */
-	SGE_SetDrawColorRGBA(button->currentColor.r, button->currentColor.g, button->currentColor.b, button->alpha);
-	SGE_DrawFillRect(&button->background);
+	SGE_SetDrawColor(button->currentColor.r, button->currentColor.g, button->currentColor.b, button->alpha);
+	SGE_DrawFillRectSDL(&button->background);
 	
 	/* Draw button border */
-	SGE_SetDrawColorRGBA(0, 0, 0, button->alpha);
+	SGE_SetDrawColor(0, 0, 0, button->alpha);
 	if(SGE_MouseInRect(&button->boundBox))
 	{
 		if(button->parentPanel != NULL)
 		{
 			if(SGE_MouseInRect(&button->parentPanel->background) && !SGE_MouseInRect(&button->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&button->parentPanel->verticalScrollbarBG))
-				SGE_SetDrawColorRGBA(225, 225, 225, button->alpha);
+				SGE_SetDrawColor(225, 225, 225, button->alpha);
 			
 			for(i = button->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
-					SGE_SetDrawColorRGBA(0, 0, 0, button->alpha);
+					SGE_SetDrawColor(0, 0, 0, button->alpha);
 			}
 		}
 		else
-			SGE_SetDrawColorRGBA(225, 225, 225, button->alpha);
+			SGE_SetDrawColor(225, 225, 225, button->alpha);
 	}
-	SGE_DrawRect(&button->background);
+	SGE_DrawRectSDL(&button->background);
 	
 	/* Draw button text image */
 	SGE_SetTextureAlpha(button->textImg, button->alpha);
@@ -1126,8 +1126,8 @@ void SGE_ButtonRender(SGE_Button *button)
 	
 	if(showControlBounds)
 	{
-		SGE_SetDrawColorRGBA(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, button->alpha);
-		SGE_DrawRect(&button->boundBox);
+		SGE_SetDrawColor(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, button->alpha);
+		SGE_DrawRectSDL(&button->boundBox);
 	}
 }
 
@@ -1339,45 +1339,45 @@ void SGE_CheckBoxRender(SGE_CheckBox *checkBox)
 	/* Draw checkbox background */
 	if(checkBox->state == SGE_CONTROL_STATE_CLICKED)
 	{
-		SGE_SetDrawColorRGBA(180, 180, 180, checkBox->alpha);
+		SGE_SetDrawColor(180, 180, 180, checkBox->alpha);
 	}
 	else
 	{
-		SGE_SetDrawColorRGBA(255, 255, 255, checkBox->alpha);
+		SGE_SetDrawColor(255, 255, 255, checkBox->alpha);
 	}
-	SGE_DrawFillRect(&checkBox->bg);
+	SGE_DrawFillRectSDL(&checkBox->bg);
 	
 	/* Draw gray checkbox border */
-	SGE_SetDrawColorRGBA(0, 0, 0, checkBox->alpha);
+	SGE_SetDrawColor(0, 0, 0, checkBox->alpha);
 	if(SGE_MouseInRect(&checkBox->boundBox))
 	{
 		if(checkBox->parentPanel != NULL)
 		{
 			if(SGE_MouseInRect(&checkBox->parentPanel->background) && !SGE_MouseInRect(&checkBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&checkBox->parentPanel->verticalScrollbarBG))
-				SGE_SetDrawColorRGBA(150, 150, 150, checkBox->alpha);
+				SGE_SetDrawColor(150, 150, 150, checkBox->alpha);
 			
 			for(i = checkBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
-					SGE_SetDrawColorRGBA(0, 0, 0, checkBox->alpha);
+					SGE_SetDrawColor(0, 0, 0, checkBox->alpha);
 			}
 		}
 		else
-			SGE_SetDrawColorRGBA(150, 150, 150, checkBox->alpha);
+			SGE_SetDrawColor(150, 150, 150, checkBox->alpha);
 	}
-	SGE_DrawRect(&checkBox->bg);
+	SGE_DrawRectSDL(&checkBox->bg);
 	
 	/* Draw the check inside the background */
 	if(checkBox->isChecked == true)
 	{
-		SGE_SetDrawColorRGBA(checkBox->checkColor.r, checkBox->checkColor.g, checkBox->checkColor.b, checkBox->alpha);
-		SGE_DrawFillRect(&checkBox->check);
+		SGE_SetDrawColor(checkBox->checkColor.r, checkBox->checkColor.g, checkBox->checkColor.b, checkBox->alpha);
+		SGE_DrawFillRectSDL(&checkBox->check);
 	}
 	
 	if(showControlBounds)
 	{
-		SGE_SetDrawColorRGBA(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, checkBox->alpha);
-		SGE_DrawRect(&checkBox->boundBox);
+		SGE_SetDrawColor(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, checkBox->alpha);
+		SGE_DrawRectSDL(&checkBox->boundBox);
 	}
 }
 
@@ -1530,16 +1530,16 @@ void SGE_TextLabelRender(SGE_TextLabel *label)
 	
 	if(label->showBG)
 	{
-		SGE_SetDrawColorRGBA(label->bgColor.r, label->bgColor.g, label->bgColor.b, label->bgColor.a);
-		SGE_DrawFillRect(&label->boundBox);
+		SGE_SetDrawColor(label->bgColor.r, label->bgColor.g, label->bgColor.b, label->bgColor.a);
+		SGE_DrawFillRectSDL(&label->boundBox);
 	}
 	
 	SGE_RenderTexture(label->textImg);
 	
 	if(showControlBounds)
 	{
-		SGE_SetDrawColorRGBA(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, label->alpha);
-		SGE_DrawRect(&label->boundBox);
+		SGE_SetDrawColor(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, label->alpha);
+		SGE_DrawRectSDL(&label->boundBox);
 	}
 }
 
@@ -1851,37 +1851,37 @@ void SGE_SliderRender(SGE_Slider *slider)
 {
 	int i = 0;
 	
-	SGE_SetDrawColorRGBA(slider->barColor.r, slider->barColor.g, slider->barColor.b, slider->alpha);
-	SGE_DrawFillRect(&slider->bar);
-	SGE_SetDrawColorRGBA(0, 0, 0, slider->alpha);
-	SGE_DrawRect(&slider->bar);
+	SGE_SetDrawColor(slider->barColor.r, slider->barColor.g, slider->barColor.b, slider->alpha);
+	SGE_DrawFillRectSDL(&slider->bar);
+	SGE_SetDrawColor(0, 0, 0, slider->alpha);
+	SGE_DrawRectSDL(&slider->bar);
 	
-	SGE_SetDrawColorRGBA(slider->sliderColor.r, slider->sliderColor.g, slider->sliderColor.b, slider->alpha);
-	SGE_DrawFillRect(&slider->slider);
+	SGE_SetDrawColor(slider->sliderColor.r, slider->sliderColor.g, slider->sliderColor.b, slider->alpha);
+	SGE_DrawFillRectSDL(&slider->slider);
 	
-	SGE_SetDrawColorRGBA(0, 0, 0, slider->alpha);
+	SGE_SetDrawColor(0, 0, 0, slider->alpha);
 	if(SGE_MouseInRect(&slider->slider) || slider->state == SGE_CONTROL_STATE_CLICKED)
 	{
 		if(slider->parentPanel != NULL)
 		{
 			if(SGE_MouseInRect(&slider->parentPanel->background) && !SGE_MouseInRect(&slider->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&slider->parentPanel->verticalScrollbarBG))
-				SGE_SetDrawColorRGBA(225, 225, 225, slider->alpha);
+				SGE_SetDrawColor(225, 225, 225, slider->alpha);
 			
 			for(i = slider->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
-					SGE_SetDrawColorRGBA(0, 0, 0, slider->alpha);
+					SGE_SetDrawColor(0, 0, 0, slider->alpha);
 			}
 		}
 		else
-			SGE_SetDrawColorRGBA(225, 225, 225, slider->alpha);
+			SGE_SetDrawColor(225, 225, 225, slider->alpha);
 	}
-	SGE_DrawRect(&slider->slider);
+	SGE_DrawRectSDL(&slider->slider);
 	
 	if(showControlBounds)
 	{
-		SGE_SetDrawColorRGBA(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, slider->alpha);
-		SGE_DrawRect(&slider->boundBox);
+		SGE_SetDrawColor(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, slider->alpha);
+		SGE_DrawRectSDL(&slider->boundBox);
 	}
 }
 
@@ -2245,8 +2245,8 @@ void SGE_TextInputBoxRender(SGE_TextInputBox *textInputBox)
 			return;
 	}
 	
-	SGE_SetDrawColorRGBA(150, 150, 150, textInputBox->alpha);
-	SGE_DrawFillRect(&textInputBox->inputBox);
+	SGE_SetDrawColor(150, 150, 150, textInputBox->alpha);
+	SGE_DrawFillRectSDL(&textInputBox->inputBox);
 
 	if(textInputBox->parentPanel != NULL)
 	{
@@ -2262,10 +2262,10 @@ void SGE_TextInputBoxRender(SGE_TextInputBox *textInputBox)
 	{
 		if(textInputBox->showCursor)
 		{
-			SGE_SetDrawColorRGBA(150, 0, 0, textInputBox->alpha);
-			SGE_DrawFillRect(&textInputBox->cursor);
-			SGE_SetDrawColorRGBA(255, 255, 255, textInputBox->alpha);
-			SGE_DrawRect(&textInputBox->cursor);
+			SGE_SetDrawColor(150, 0, 0, textInputBox->alpha);
+			SGE_DrawFillRectSDL(&textInputBox->cursor);
+			SGE_SetDrawColor(255, 255, 255, textInputBox->alpha);
+			SGE_DrawRectSDL(&textInputBox->cursor);
 		}
 	}
 	
@@ -2280,31 +2280,31 @@ void SGE_TextInputBoxRender(SGE_TextInputBox *textInputBox)
 		SGE_SetDrawClipRect(NULL);
 	}
 	
-	SGE_SetDrawColorRGBA(0, 0, 0, textInputBox->alpha);
+	SGE_SetDrawColor(0, 0, 0, textInputBox->alpha);
 	if(SGE_MouseInRect(&textInputBox->inputBox))
 	{
 		if(textInputBox->parentPanel != NULL)
 		{
 			if(SGE_MouseInRect(&textInputBox->parentPanel->background) && !SGE_MouseInRect(&textInputBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&textInputBox->parentPanel->verticalScrollbarBG))
-				SGE_SetDrawColorRGBA(255, 255, 255, textInputBox->alpha);
+				SGE_SetDrawColor(255, 255, 255, textInputBox->alpha);
 			
 			int i = 0;
 			for(i = textInputBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
-					SGE_SetDrawColorRGBA(0, 0, 0, textInputBox->alpha);
+					SGE_SetDrawColor(0, 0, 0, textInputBox->alpha);
 			}
 		}
 		else
-			SGE_SetDrawColorRGBA(255, 255, 255, textInputBox->alpha);
+			SGE_SetDrawColor(255, 255, 255, textInputBox->alpha);
 	}
-	SGE_DrawRect(&textInputBox->inputBox);
+	SGE_DrawRectSDL(&textInputBox->inputBox);
 	
 	if(showControlBounds)
 	{
-		SGE_SetDrawColorRGBA(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, textInputBox->alpha);
-		SGE_DrawRect(&textInputBox->textImg->destRect);
-		SGE_DrawRect(&textInputBox->boundBox);
+		SGE_SetDrawColor(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, textInputBox->alpha);
+		SGE_DrawRectSDL(&textInputBox->textImg->destRect);
+		SGE_DrawRectSDL(&textInputBox->boundBox);
 	}
 }
 
@@ -2547,34 +2547,34 @@ void SGE_ListBoxUpdate(SGE_ListBox *listBox)
 
 void SGE_ListBoxRender(SGE_ListBox *listBox)
 {
-	SGE_SetDrawColorRGBA(255, 255, 255, listBox->alpha);
-	SGE_DrawFillRect(&listBox->selectionBox);
+	SGE_SetDrawColor(255, 255, 255, listBox->alpha);
+	SGE_DrawFillRectSDL(&listBox->selectionBox);
 	SGE_RenderTexture(listBox->selectionImg);
 	
-	SGE_SetDrawColorRGBA(0, 0, 0, listBox->alpha);
+	SGE_SetDrawColor(0, 0, 0, listBox->alpha);
 	if(SGE_MouseInRect(&listBox->selectionBox))
 	{
 		if(listBox->parentPanel != NULL)
 		{
 			if(SGE_MouseInRect(&listBox->parentPanel->background) && !SGE_MouseInRect(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&listBox->parentPanel->verticalScrollbarBG))
-				SGE_SetDrawColorRGBA(150, 150, 150, listBox->alpha);
+				SGE_SetDrawColor(150, 150, 150, listBox->alpha);
 			
 			int i = 0;
 			for(i = listBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
-					SGE_SetDrawColorRGBA(0, 0, 0, listBox->alpha);
+					SGE_SetDrawColor(0, 0, 0, listBox->alpha);
 			}
 		}
 		else
-			SGE_SetDrawColorRGBA(150, 150, 150, listBox->alpha);
+			SGE_SetDrawColor(150, 150, 150, listBox->alpha);
 	}
-	SGE_DrawRect(&listBox->selectionBox);
+	SGE_DrawRectSDL(&listBox->selectionBox);
 	
 	if(showControlBounds)
 	{
-		SGE_SetDrawColorRGBA(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, listBox->alpha);
-		SGE_DrawRect(&listBox->boundBox);
+		SGE_SetDrawColor(controlBoundsColor.r, controlBoundsColor.g, controlBoundsColor.b, listBox->alpha);
+		SGE_DrawRectSDL(&listBox->boundBox);
 	}
 	
 	if(listBox->isOpen)
@@ -2582,30 +2582,30 @@ void SGE_ListBoxRender(SGE_ListBox *listBox)
 		int i = 0;
 		for(i = 0; i < listBox->optionCount; i++)
 		{
-			SGE_SetDrawColorRGBA(255, 255, 255, listBox->alpha);
+			SGE_SetDrawColor(255, 255, 255, listBox->alpha);
 			if(SGE_MouseInRect(&listBox->optionBoxes[i]))
 			{
 				if(listBox->parentPanel != NULL)
 				{
 					if(SGE_MouseInRect(&listBox->parentPanel->background) && !SGE_MouseInRect(&listBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&listBox->parentPanel->verticalScrollbarBG))
-						SGE_SetDrawColorRGBA(50, 50, 150, listBox->alpha);
+						SGE_SetDrawColor(50, 50, 150, listBox->alpha);
 					
 					int i = 0;
 					for(i = listBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 					{
 						if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
-							SGE_SetDrawColorRGBA(255, 255, listBox->alpha, listBox->alpha);
+							SGE_SetDrawColor(255, 255, listBox->alpha, listBox->alpha);
 					}
 				}
 				else
-					SGE_SetDrawColorRGBA(50, 50, 150, listBox->alpha);
+					SGE_SetDrawColor(50, 50, 150, listBox->alpha);
 			}
 			else
-				SGE_SetDrawColorRGBA(255, 255, 255, listBox->alpha);
-			SGE_DrawFillRect(&listBox->optionBoxes[i]);
+				SGE_SetDrawColor(255, 255, 255, listBox->alpha);
+			SGE_DrawFillRectSDL(&listBox->optionBoxes[i]);
 			
-			SGE_SetDrawColorRGBA(0, 0, 0, listBox->alpha);
-			SGE_DrawRect(&listBox->optionBoxes[i]);
+			SGE_SetDrawColor(0, 0, 0, listBox->alpha);
+			SGE_DrawRectSDL(&listBox->optionBoxes[i]);
 			SGE_RenderTexture(listBox->optionImages[i]);
 		}
 	}
@@ -2750,26 +2750,26 @@ void SGE_MinimizeButtonRender(SGE_MinimizeButton *minButton)
 {
 	int i = 0;
 	
-	SGE_SetDrawColorRGBA(minButton->currentColor.r, minButton->currentColor.g, minButton->currentColor.b, minButton->parentPanel->alpha);
-	SGE_DrawFillRect(&minButton->boundBox);
+	SGE_SetDrawColor(minButton->currentColor.r, minButton->currentColor.g, minButton->currentColor.b, minButton->parentPanel->alpha);
+	SGE_DrawFillRectSDL(&minButton->boundBox);
 	
 	/* Draw button image */
 	SGE_SetTextureAlpha(minButton->buttonImg, minButton->parentPanel->alpha);
 	SGE_RenderTexture(minButton->buttonImg);
 	
 	/* Draw button border */
-	SGE_SetDrawColorRGBA(0, 0, 0, minButton->parentPanel->alpha);
+	SGE_SetDrawColor(0, 0, 0, minButton->parentPanel->alpha);
 	if(SGE_MouseInRect(&minButton->boundBox))
 	{
-		SGE_SetDrawColorRGBA(225, 225, 225, minButton->parentPanel->alpha);
+		SGE_SetDrawColor(225, 225, 225, minButton->parentPanel->alpha);
 		
 		for(i = minButton->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
 		{
 			if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
-				SGE_SetDrawColorRGBA(0, 0, 0, minButton->parentPanel->alpha);
+				SGE_SetDrawColor(0, 0, 0, minButton->parentPanel->alpha);
 		}
 	}
-	SGE_DrawRect(&minButton->boundBox);
+	SGE_DrawRectSDL(&minButton->boundBox);
 }
 
 SGE_WindowPanel *SGE_CreateWindowPanel(const char *title, int x, int y, int w, int h) 
@@ -3231,23 +3231,23 @@ void SGE_WindowPanelRender(SGE_WindowPanel *panel)
 	
 	/* Draw a rect that acts as a border and title bar */
 	SGE_SetDrawBlendMode(SDL_BLENDMODE_BLEND);
-	SGE_SetDrawColorRGBA(panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
-	SGE_DrawFillRect(&panel->border);
+	SGE_SetDrawColor(panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
+	SGE_DrawFillRectSDL(&panel->border);
 	
 	/* Draw a white or black border around the panel */
 	if(panel->isActive)
 	{
-		SGE_SetDrawColorRGBA(255, 255, 255, panel->alpha);
+		SGE_SetDrawColor(255, 255, 255, panel->alpha);
 	}
 	else
 	{
-		SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
+		SGE_SetDrawColor(0, 0, 0, panel->alpha);
 	}
-	SGE_DrawRect(&panel->border);
+	SGE_DrawRectSDL(&panel->border);
 	
 	/* Draw the actual background of the panel */
-	SGE_SetDrawColorRGBA(panel->backgroundColor.r, panel->backgroundColor.g, panel->backgroundColor.b, panel->alpha);
-	SGE_DrawFillRect(&panel->background);
+	SGE_SetDrawColor(panel->backgroundColor.r, panel->backgroundColor.g, panel->backgroundColor.b, panel->alpha);
+	SGE_DrawFillRectSDL(&panel->background);
 	
 	/* Draw the panel title text */
 	SGE_SetTextureAlpha(panel->titleTextImg, panel->alpha);
@@ -3292,81 +3292,81 @@ void SGE_WindowPanelRender(SGE_WindowPanel *panel)
 	}
 	
 	SGE_SetDrawClipRect(NULL);
-	SGE_SetDrawColorRGBA(255, 255, 255, 0);
+	SGE_SetDrawColor(255, 255, 255, 0);
 	SGE_DrawPoint(0, 0);
 	
 	/* Draw Horizontal Scrollbar */
 	if(panel->horizontalScrollbarEnabled)
 	{
-		SGE_SetDrawColorRGBA(255, 255, 255, panel->alpha);
-		SGE_DrawFillRect(&panel->horizontalScrollbarBG);
-		SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
-		SGE_DrawRect(&panel->horizontalScrollbarBG);
+		SGE_SetDrawColor(255, 255, 255, panel->alpha);
+		SGE_DrawFillRectSDL(&panel->horizontalScrollbarBG);
+		SGE_SetDrawColor(0, 0, 0, panel->alpha);
+		SGE_DrawRectSDL(&panel->horizontalScrollbarBG);
 		
-		SGE_SetDrawColorRGBA(panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
-		SGE_DrawFillRect(&panel->horizontalScrollbar);
+		SGE_SetDrawColor(panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
+		SGE_DrawFillRectSDL(&panel->horizontalScrollbar);
 		
-		SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
+		SGE_SetDrawColor(0, 0, 0, panel->alpha);
 		if(SGE_MouseInRect(&panel->horizontalScrollbar))
 		{
-			SGE_SetDrawColorRGBA(225, 225, 225, panel->alpha);
+			SGE_SetDrawColor(225, 225, 225, panel->alpha);
 			
 			for(i = panel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
-					SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
+					SGE_SetDrawColor(0, 0, 0, panel->alpha);
 			}
 		}
-		SGE_DrawRect(&panel->horizontalScrollbar);
+		SGE_DrawRectSDL(&panel->horizontalScrollbar);
 	}
 	
 	/* Draw Vertical Scrollbar */
 	if(panel->verticalScrollbarEnabled)
 	{
-		SGE_SetDrawColorRGBA(255, 255, 255, panel->alpha);
-		SGE_DrawFillRect(&panel->verticalScrollbarBG);
-		SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
-		SGE_DrawRect(&panel->verticalScrollbarBG);
+		SGE_SetDrawColor(255, 255, 255, panel->alpha);
+		SGE_DrawFillRectSDL(&panel->verticalScrollbarBG);
+		SGE_SetDrawColor(0, 0, 0, panel->alpha);
+		SGE_DrawRectSDL(&panel->verticalScrollbarBG);
 		
-		SGE_SetDrawColorRGBA(panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
-		SGE_DrawFillRect(&panel->verticalScrollbar);
+		SGE_SetDrawColor(panel->borderColor.r, panel->borderColor.g, panel->borderColor.b, panel->alpha);
+		SGE_DrawFillRectSDL(&panel->verticalScrollbar);
 		
-		SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
+		SGE_SetDrawColor(0, 0, 0, panel->alpha);
 		if(SGE_MouseInRect(&panel->verticalScrollbar))
 		{
-			SGE_SetDrawColorRGBA(225, 225, 225, panel->alpha);
+			SGE_SetDrawColor(225, 225, 225, panel->alpha);
 			
 			for(i = panel->index + 1; i < currentStateControls->panelCount; i++)
 			{
 				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
-					SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
+					SGE_SetDrawColor(0, 0, 0, panel->alpha);
 			}
 		}
-		SGE_DrawRect(&panel->verticalScrollbar);
+		SGE_DrawRectSDL(&panel->verticalScrollbar);
 	}
 	
 	if(showControlBounds)
 	{
 		/* Draw Resize Control Bars */
-		SGE_SetDrawColorRGBA(255, 0, 255, panel->alpha);
-		SGE_DrawRect(&panel->resizeBar_horizontal);
-		SGE_SetDrawColorRGBA(0, 255, 0, panel->alpha);
-		SGE_DrawRect(&panel->resizeBar_vertical);
+		SGE_SetDrawColor(255, 0, 255, panel->alpha);
+		SGE_DrawRectSDL(&panel->resizeBar_horizontal);
+		SGE_SetDrawColor(0, 255, 0, panel->alpha);
+		SGE_DrawRectSDL(&panel->resizeBar_vertical);
 		
 		/* Draw the panel center point */
 		SDL_Rect centerRect = {panel->bgGlobalCenter.x - 2, panel->bgGlobalCenter.y - 2, 4, 4};
-		SGE_SetDrawColorRGBA(255, 255, 255, panel->alpha);
-		SGE_DrawFillRect(&centerRect);
-		SGE_SetDrawColorRGBA(0, 0, 0, panel->alpha);
-		SGE_DrawRect(&centerRect);
+		SGE_SetDrawColor(255, 255, 255, panel->alpha);
+		SGE_DrawFillRectSDL(&centerRect);
+		SGE_SetDrawColor(0, 0, 0, panel->alpha);
+		SGE_DrawRectSDL(&centerRect);
 		
 		/* Draw panel MCR */
-		SGE_SetDrawColorRGBA(0, 255, 0, panel->alpha);
-		SGE_DrawRect(&panel->masterControlRect);
+		SGE_SetDrawColor(0, 255, 0, panel->alpha);
+		SGE_DrawRectSDL(&panel->masterControlRect);
 		
 		/* Draw panel boundbox */
-		SGE_SetDrawColorRGBA(255, 0, 255, panel->alpha);
-		SGE_DrawRect(&panel->boundBox);
+		SGE_SetDrawColor(255, 0, 255, panel->alpha);
+		SGE_DrawRectSDL(&panel->boundBox);
 	}
 }
 

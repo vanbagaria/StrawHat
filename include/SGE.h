@@ -50,11 +50,20 @@ void SGE_Run(const char *entryStateName);
 void SGE_Quit();
 
 /**
- * \brief Sets the background color of the game window. Can use color constants from SGE_Graphics.h
+ * \brief Sets the background color of the game window to the given RGB color.
+ * 
+ * \param r The red component of the color. (0 to 255)
+ * \param g The green component of the color. (0-255)
+ * \param b The blue component of the color. (0-255)
+ */
+void SGE_SetBackgroundColor(Uint8 r, Uint8 g, Uint8 b);
+
+/**
+ * \brief Sets the background color of the game window to the given SDL_Color. Can use color constants from SGE_Graphics.h
  * 
  * \param color The SDL_Color to set as the background color.
  */
-void SGE_SetBackgroundColor(SDL_Color color);
+void SGE_SetBackgroundColorSDL(SDL_Color color);
 
 /**
  * \brief Limits the frame rate of the game.

@@ -36,8 +36,15 @@ extern const SDL_Color SGE_COLOR_INDIGO;
 extern const SDL_Color SGE_COLOR_PURPLE;
 /**@}*/
 
+/**
+ * \brief Returns the SDL_Renderer used for rendering by the game window.
+ * 
+ * \return The SDL renderer used by graphics functions.
+ */
+SDL_Renderer *SGE_GetSDLRenderer();
+
 /***********************
- * Rendering Functions
+ * Drawing Functions
  ***********************/
 
 /**

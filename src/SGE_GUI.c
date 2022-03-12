@@ -269,7 +269,7 @@ static void SGE_GUI_DebugState_Update()
 		if((SDL_GetTicks() - lastLabelUpdateTime) > labelUpdateInterval)
 		{
 			SGE_TextLabelSetTextf(deltaLabel, "Delta: %.3f s", SGE_GetDeltaTime());
-			SGE_TextLabelSetTextf(fpsLabel, "FPS: %d", countedFPS);
+			SGE_TextLabelSetTextf(fpsLabel, "FPS: %d %s", countedFPS, SGE_GetFPSLimit() ? "(Capped)" : "");
 			if(SGE_IsVsync()) {
 				SGE_TextLabelSetTextf(vsyncLabel, "V-SYNC: ON");
 			}

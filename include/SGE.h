@@ -99,17 +99,22 @@ void SGE_SetBackgroundColorSDL(SDL_Color color);
 /**
  * \brief Limits the frame rate of the game.
  * 
- * \param fps The target frames per second. Turns off limiter if 0.
+ * \param fps The maximum frames per second. Turns off limiter if 0.
  */
-void SGE_SetTargetFPS(int fps);
+void SGE_SetFPSLimit(int fps);
 
 /**
- * \brief Toggles vsync on and off for the game.
- *        Do not call this from a state's init or quit functions,
- *        as it free's all loaded states and reinitalizes the current one.
+ * \brief Returns the current frame rate limit of the game.
+ * 
+ * \return Maximum FPS or 0 if limiter is turned off.
+ */
+int SGE_GetFPSLimit();
+
+/**
+ * \brief Sets whether V-SYNC is enabled for the game.
  * 
  */
-void SGE_ToggleVsync();
+void SGE_SetVSync(bool enabled);
 
 /**
  * \brief Returns whether vsync is currently turned on.
@@ -202,13 +207,6 @@ double SGE_GetDeltaTime();
  * \return The name of the current game state. 
  */
 const char *SGE_GetCurrentStateName();
-
-/**
- * \brief Returns the SDL_Renderer used for rendering by the game window.
- * 
- * \return The SDL renderer used by graphics functions.
- */
-SDL_Renderer *SGE_GetSDLRenderer();
 
 /**
  * \brief Returns the SDL_Event used for event handling by the game window.

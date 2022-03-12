@@ -34,17 +34,66 @@ const SDL_Color SGE_COLOR_PURPLE       = {163,  73, 164, 255};
  */
 static SDL_Renderer *renderer = NULL;
 
+SDL_Renderer *SGE_GetSDLRenderer()
+{
+	return renderer;
+}
+
+/***********************************
+ * SGE Graphics Internal Functions
+ ***********************************/
+
 /**
- * \brief Gets the SDL_Renderer from SGE.c
+ * \brief Initiallizes the game renderer.
+ * 
+ * \param window Pointer to the game SDL window.
+ * \param vsync Whether to use V-SYNC.
+ * \return true on success, false on failure.
+ */
+bool SGE_Graphics_Init(SDL_Window *window, bool vsync)
+{
+	SDL_RendererFlags rendererFlags = SDL_RENDERER_ACCELERATED;
+	SDL_RendererInfo rendererInfo;
+	
+	if(vsync)
+	{
+		rendererFlags |= SDL_RENDERER_PRESENTVSYNC;
+	}
+	
+	renderer = SDL_CreateRenderer(window, -1, rendererFlags);
+	if(renderer == NULL)
+	{
+		return false;
+	}
+	
+	SDL_GetRendererInfo(renderer, &rendererInfo);
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "Renderer: %s", rendererInfo.name);
+	return true;
+}
+
+/**
+ * \brief De-initializes the game renderer.
  * 
  */
-void SGE_Graphics_UpdateSDLRenderer()
+void SGE_Graphics_Quit()
 {
-	renderer = SGE_GetSDLRenderer();
+	SDL_DestroyRenderer(renderer);
+	renderer = NULL;
+}
+
+/**
+ * \brief Sets whether V-SYNC is enabled for the game renderer.
+ * 
+ * \param enabled Whether to enable or disable V-SYNC.
+ * \return true on success, false on failure.
+ */
+bool SGE_Graphics_SetVSync(bool enabled)
+{
+	return !SDL_RenderSetVSync(renderer, enabled);
 }
 
 /***********************
- * Rendering Functions
+ * Drawing Functions
  ***********************/
 
 void SGE_ClearScreen(Uint8 r, Uint8 g, Uint8 b)

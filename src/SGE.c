@@ -23,7 +23,6 @@ static const SDL_version *SDL_TTF_Version_DLL;
 static const SDL_version *SDL_MIX_Version_DLL;
 
 static SDL_Window   *window   = NULL;
-static SDL_Renderer *renderer = NULL;
 static SDL_Event event;
 
 static const Uint8 *keyboardState = NULL;
@@ -45,7 +44,6 @@ static bool isSGEInit       = false;
 static bool shouldQuit      = false;
 static bool isRunning       = false;
 static bool isVsyncOn       = false;
-static bool isTogglingVsync = false;
 static bool isFullscreen    = false;
 
 /* Frame timing data */
@@ -113,6 +111,11 @@ void SGE_SetCurrentStateFunctions(const char *name, bool (*init)(), void (*quit)
  */
 void SGE_SetEntryStateFromList(const char *name);
 
+/* Defined in SGE_Graphics.c */
+bool SGE_Graphics_Init();
+void SGE_Graphics_Quit();
+bool SGE_Graphics_SetVSync();
+
 /* Defined in SGE_GUI.c */
 bool SGE_GUI_Init();
 void SGE_GUI_Quit();
@@ -123,18 +126,6 @@ void SGE_GUI_Render();
 /*  Updates the current control list pointer in SGE_GUI.c */
 void SGE_GUI_UpdateCurrentState(const char *nextState);
 
-/*
- * Updates the SDL_Renderer to be used by SGE_Graphics.c
- * This function is defined in SGE_Graphics.c, it is called whenever the SDL renderer
- * is created, so the graphics functions can have access to the renderer.
- */
-void SGE_Graphics_UpdateSDLRenderer();
-
-SDL_Renderer *SGE_GetSDLRenderer()
-{
-	return renderer;
-}
-
 SDL_Event *SGE_GetSDLEvent()
 {
 	return &event;
@@ -143,6 +134,11 @@ SDL_Event *SGE_GetSDLEvent()
 double SGE_GetDeltaTime()
 {
 	return deltaTime;
+}
+
+int SGE_GetFPSLimit()
+{
+    return FPSLimit;
 }
 
 bool SGE_IsVsync()
@@ -254,11 +250,8 @@ SGE_InitConfig SGE_CreateInitConfig()
 	{
 		windowFlags |= SDL_WINDOW_BORDERLESS;
 	}
-
-	SDL_RendererFlags rendererFlags = SDL_RENDERER_ACCELERATED;
 	if(conf.vsync)
 	{
-		rendererFlags |= SDL_RENDERER_PRESENTVSYNC;
 		isVsyncOn = true;
 	}
 
@@ -270,6 +263,9 @@ SGE_InitConfig SGE_CreateInitConfig()
 	IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_WEBP);
 	TTF_Init();
 
+	SGE_LogPrintLine(SGE_LOG_INFO, "Straw Hat Game Engine");
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "Platform: %s", SDL_GetPlatform());
+
 	window = SDL_CreateWindow(title, conf.x, conf.y, screenWidth, screenHeight, windowFlags);
 	if(window == NULL)
 	{
@@ -277,16 +273,13 @@ SGE_InitConfig SGE_CreateInitConfig()
 		shouldQuit = true;
 		return false;
 	}
-	
-	renderer = SDL_CreateRenderer(window, -1, rendererFlags);
-	if(renderer == NULL)
+
+	if(!SGE_Graphics_Init(window, conf.vsync))
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to create Game Renderer! SDL_Error: %s", SDL_GetError());
 		shouldQuit = true;
 		return false;
 	}
-
-	SGE_Graphics_UpdateSDLRenderer();
 	
 	defaultFont = TTF_OpenFont("assets/FreeSans.ttf", 24);
 	if(defaultFont == NULL)
@@ -317,14 +310,8 @@ SGE_InitConfig SGE_CreateInitConfig()
 	SDL_MIXER_VERSION(&SDL_MIX_Version_C);
 	SDL_MIX_Version_DLL = Mix_Linked_Version();
 	
-	SGE_LogPrintLine(SGE_LOG_INFO, "Straw Hat Game Engine Version 1.0");
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Platform: %s", SDL_GetPlatform());
-	//SGE_LogPrintLine(SGE_LOG_DEBUG, "Video Driver: %s", SDL_GetCurrentVideoDriver());
-	//SGE_LogPrintLine(SGE_LOG_DEBUG, "Audio Driver: %s", SDL_GetCurrentAudioDriver());
-
-	SDL_RendererInfo rendererInfo;
-	SDL_GetRendererInfo(renderer, &rendererInfo);
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Renderer: %s", rendererInfo.name);
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "Video Driver: %s", SDL_GetCurrentVideoDriver());
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "Audio Driver: %s", SDL_GetCurrentAudioDriver());
 
 	randSeed = time(NULL);
 	srand(randSeed);
@@ -351,8 +338,7 @@ SGE_InitConfig SGE_CreateInitConfig()
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to initialize SGE GUI!");
 		shouldQuit = true;
 
-		SDL_DestroyRenderer(renderer);
-		renderer = NULL;
+		SGE_Graphics_Quit();
 		SDL_DestroyWindow(window);
 		window = NULL;
 
@@ -416,7 +402,7 @@ void SGE_Run(const char *entryStateName)
 		SGE_ClearScreenSDL(defaultScreenClearColor);
 		currentStateRender();
 		SGE_GUI_Render();
-		SDL_RenderPresent(renderer);
+		SDL_RenderPresent(SGE_GetSDLRenderer());
 
 		SGE_SwitchStates();
 		
@@ -441,8 +427,7 @@ void SGE_Run(const char *entryStateName)
 	Mix_Quit();
 	TTF_CloseFont(defaultFont);
 	
-	SDL_DestroyRenderer(renderer);
-	renderer = NULL;
+	SGE_Graphics_Quit();
 	SDL_DestroyWindow(window);
 	window = NULL;
 	
@@ -468,7 +453,7 @@ void SGE_ToggleFullscreen()
 {
 	if(!isSGEInit)
 	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot toggle Full Screen, SGE is not initialized.");
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot toggle Full Screen, SGE is not initialized!");
 		return;
 	}
 
@@ -498,84 +483,34 @@ void SGE_ToggleFullscreen()
 	}
 }
 
-/*
- * Toggles the vsync by destroying and recreating the current renderer and all it's created textures.
- * Will reset the current state and destroy all gui controls to initialize them again.
-*/
-void SGE_ToggleVsync()
+void SGE_SetVSync(bool enabled)
 {
-	if(isTogglingVsync)
-	{
-		return;
-	}
-	
-	isTogglingVsync = true;
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Setting V-SYNC %s...\n", isVsyncOn ? "OFF" : "ON");
-
 	if(!isSGEInit)
 	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot toggle V-SYNC, SGE is not initialized.");
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot set V-SYNC, SGE is not initialized!");
 		return;
 	}
 
-	/* Save the current renderer's draw blend mode and draw color */
-	SDL_BlendMode blendMode;
-	SDL_GetRenderDrawBlendMode(renderer, &blendMode);
-	SDL_Color drawColor;
-	SDL_GetRenderDrawColor(renderer, &drawColor.r, &drawColor.g, &drawColor.b, &drawColor.a);
-	
-	/* Quit all currently loaded states and the GUI to free all textures */
-	SGE_QuitLoadedStates();
-	SGE_GUI_Quit();
-	
-	SDL_DestroyRenderer(renderer);
-	renderer = NULL;
-	
-	/* Toggle the vsync variable */
-	isVsyncOn = !isVsyncOn;
-	
-	/* Recreate the renderer */
-	if(isVsyncOn)
-		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	else
-		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-	
-	/* Set the new renderer's blend mode and color to the old one's */
-	SDL_SetRenderDrawBlendMode(renderer, blendMode);
-	SDL_SetRenderDrawColor(renderer, drawColor.r, drawColor.g, drawColor.b, drawColor.a);
-
-	SGE_Graphics_UpdateSDLRenderer();
-	
-	/* Reinitialize the GUI and the current state */
-	SGE_GUI_Init();
-	SGE_InitState(currentStateName);
-	
-	if(isVsyncOn)
+	if(SGE_Graphics_SetVSync(enabled))
 	{
-		if(isFrameRateCapped)
-		{
-			isFrameRateCapped = false;
-			SGE_LogPrintLine(SGE_LOG_INFO, "Turned off frame rate limiter.");
-		}
+		isVsyncOn = enabled;
+		SGE_LogPrintLine(SGE_LOG_INFO, "Set V-SYNC %s.", enabled ? "ON" : "OFF");
 	}
-	SGE_LogPrintLine(SGE_LOG_INFO, "Toggled V-SYNC %s.\n", isVsyncOn ? "ON" : "OFF");
-	isTogglingVsync = false;
+	else
+	{
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Failed to set V-SYNC!");
+	}
 }
 
 /*
  * Sets the frame rate limit to "fps", or disables limit if "fps" is 0.
 */
-void SGE_SetTargetFPS(int fps)
+void SGE_SetFPSLimit(int fps)
 {
-	if(isVsyncOn)
-	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "Can't set FPS, V-SYNC is ON!");
-		return;
-	}
-	
 	if(fps == 0)
 	{
 		isFrameRateCapped = false;
+		FPSLimit = 0;
 		SGE_LogPrintLine(SGE_LOG_INFO, "Turned off frame rate limiter.");
 	}
 	else

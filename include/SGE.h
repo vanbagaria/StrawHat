@@ -9,7 +9,7 @@
 #define __SGE_H__
 
 #include "SDL.h"
-#include "SGE_GameState.h"
+#include "SGE_Scene.h"
 #include <stdbool.h>
 
 /**
@@ -42,9 +42,9 @@ typedef struct
 SGE_InitConfig SGE_CreateInitConfig();
 
 /**
- * \brief Initializes SGE and creates the game window, must be called once before calling SGE_Run().
+ * \brief Initializes SGE and creates the game window, must be called once before calling SGE_Start().
  * 
- * SGE_Run() must be called after a call to this function to start a user registered game state.
+ * SGE_Start() must be called after a call to this function to start a user registered game scene.
  * 
  * \param title The title of the game window.
  * \param width The width of the game window in pixels.
@@ -53,32 +53,34 @@ SGE_InitConfig SGE_CreateInitConfig();
  * \return true if initialization is successful, false if there was an error.
  * 
  * \sa SGE_CreateInitConfig
- * \sa SGE_Run
+ * \sa SGE_Start
  */
 bool SGE_Init(const char *title, int width, int height, SGE_InitConfig *config);
 
 /**
- * \brief Starts a registered game state after SGE is initialized with SGE_Init(). 
- *        Must be called once, after SGE is initialized and all states have been registered with SGE_AddState().
+ * \brief Uninitializes SGE and destroys the game window, must be called if SGE has been initialized with SGE_Init().
  * 
- * Once this function is called, all control is given to the entry state. Thus, all furthur logic should be in the game states.
- * This function uninitializes SGE when a quit is requested, so it must be called if SGE has been initialized. 
- * 
- * \param entryStateName The name of a game state registered with SGE_AddState()
- * 
- * \sa SGE_Init
- * \sa SGE_AddState
- */
-void SGE_Run(const char *entryStateName);
-
-/**
- * \brief Stops the currently running game state and deinitializes SGE.
- *        Must be called from inside of a game state.
- * 
- * This function will quit all states that are currently loaded, unregister all states that have been registered 
- * and destroy the game window.
  */
 void SGE_Quit();
+
+/**
+ * \brief Starts a registered game scene after SGE is initialized with SGE_Init(). 
+ *        Must be called once, after SGE is initialized and all scenes have been registered with SGE_AddScene().
+ * 
+ * Once this function is called, all control is given to the entry scene. Thus, all furthur logic should be in the game scenes.
+ * 
+ * \param entrySceneName The name of a game scene registered with SGE_AddScene()
+ * 
+ * \sa SGE_Init
+ * \sa SGE_AddScene
+ */
+void SGE_Start(const char *entrySceneName);
+
+/**
+ * \brief Stops the currently running game scene. Must be called from inside of a game scene after SGE_Start() has been called.
+ * 
+ */
+void SGE_Stop();
 
 /**
  * \brief Sets the background color of the game window to the given RGB color.
@@ -202,11 +204,11 @@ bool SGE_KeyIsPressed(SDL_Scancode scancode);
 double SGE_GetDeltaTime();
 
 /**
- * \brief Returns the name of the currently active game state.
+ * \brief Returns the name of the currently active game scene.
  * 
- * \return The name of the current game state. 
+ * \return The name of the current game scene. 
  */
-const char *SGE_GetCurrentStateName();
+const char *SGE_GetCurrentSceneName();
 
 /**
  * \brief Returns the SDL_Event used for event handling by the game window.

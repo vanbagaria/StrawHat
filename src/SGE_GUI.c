@@ -1,7 +1,7 @@
 #include "SGE_GUI.h"
 #include "SGE_Logger.h"
 #include "SGE.h"
-#include "SGE_GameState.h"
+#include "SGE_Scene.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -15,10 +15,10 @@ static TTF_Font *textBoxFont = NULL;
 static TTF_Font *listBoxFont = NULL;
 
 /**
- * \brief A list of GUI controls that is held by each state in SGE.
+ * \brief A list of GUI controls that is held by each scene in SGE.
  * 
- * Each state holds a copy of this structure to maintain it's controls.
- * The SGE GUI holds a reference to the current state's control list to be used by
+ * Each scene holds a copy of this structure to maintain it's controls.
+ * The SGE GUI holds a reference to the current scene's control list to be used by
  * GUI functions.
  */
 typedef struct SGE_GUI_ControlList
@@ -43,54 +43,13 @@ typedef struct SGE_GUI_ControlList
 	int listBoxCount;
 } SGE_GUI_ControlList;
 
-/* List pointer for current state's controls */
-static SGE_GUI_ControlList *currentStateControls = NULL;
+/* List pointer for current scene's controls */
+static SGE_GUI_ControlList *currentSceneControls = NULL;
 
-/* 
-* List for debug state's controls.
-* The debug state is a set of controls that overlay on top of the current engine state.
-* These controls include labels with FPS information, the debug panel and more.
-* The debug state is toggled with the F1 key.
-*/
-static SGE_GUI_ControlList debugStateControls;
-
-/* Toggle to disable debug state */
-static bool showDebugState = false;
-static SGE_TextLabel *debugStateLabel;
-
-/* The debug panel, toggled with F2 */
-static SGE_WindowPanel *debugPanel;
-
-/* Toggle for displaying control boundboxes */
-static bool showControlBounds = false;
-static SGE_CheckBox *showBoundsChkBox;
-static SGE_TextLabel *showBoundsLabel;
-static SDL_Color controlBoundsColor;
-
-/* Toggle for displaying frame rate information */
-static bool showFrameInfo = true;
-static SGE_CheckBox *showFrameInfoChkBox;
-static SGE_TextLabel *showFrameInfoLbl;
-
-/* List of panels in current state as a string */
+/* List of panels in current scene as a string */
 static char panelsListStr[200];
-
-static SGE_TextLabel *panelListLabel;
-static SGE_TextLabel *stateListLabel;
-
-/* Frame rate counter */
-static unsigned int frameCounter;
-static unsigned int countedFPS;
-static unsigned int lastFPSCountTime;
-
-/* Frame info labels */
-static SGE_TextLabel *deltaLabel;
-static SGE_TextLabel *fpsLabel;
-static SGE_TextLabel *vsyncLabel;
-
-/* Frame info labels update interval in ms */
-static unsigned int labelUpdateInterval = 250;
-static unsigned int lastLabelUpdateTime;
+static SDL_Color controlBoundsColor;
+static bool showControlBounds = false;
 
 static void SGE_GUI_ControlList_HandleEvents(SGE_GUI_ControlList *controls);
 static void SGE_GUI_ControlList_Update(SGE_GUI_ControlList *controls);
@@ -98,7 +57,7 @@ static void SGE_GUI_ControlList_Render(SGE_GUI_ControlList *controls);
 void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls);
 
 /**
- * \brief Creates a new SGE_GUI_ControlList for a game state.
+ * \brief Creates a new SGE_GUI_ControlList for a game scene.
  * 
  * \return The address of the created list of GUI controls.
  */
@@ -117,10 +76,10 @@ SGE_GUI_ControlList *SGE_CreateGUIControlList()
 }
 
 /**
- * \brief Destroys a game state's GUI control list.
+ * \brief Destroys a game scene's GUI control list.
  * 
- * This function will delete the GUI control list that is held by the specified state.
- * It is called automatically when a state is unregistered by the SGE_DestroyStateList() function.
+ * This function will delete the GUI control list that is held by the specified scene.
+ * It is called automatically when a scene is unregistered by the SGE_DestroySceneList() function.
  * 
  * \param controls The address of the GUI control list that should be freed.
  */
@@ -130,10 +89,10 @@ void SGE_DestroyGUIControlList(SGE_GUI_ControlList *controls)
 }
 
 /*
- * Returns the SGE_GUI_ControlList pointer for a registered state.
- * This function is defined in SGE_GameState.c
+ * Returns the SGE_GUI_ControlList pointer for a registered scene.
+ * This function is defined in SGE_Scene.c
  */
-SGE_GUI_ControlList *SGE_GetStateGUIControlList(const char *name);
+SGE_GUI_ControlList *SGE_GetSceneGUIControlList(const char *name);
 
 /* GUI control functions */
 
@@ -173,136 +132,22 @@ static void SGE_WindowPanelCalculateMCR(SGE_WindowPanel *panel, SDL_Rect boundBo
 static void SGE_WindowPanelShouldEnableHorizontalScroll(SGE_WindowPanel *panel);
 static void SGE_WindowPanelShouldEnableVerticalScroll(SGE_WindowPanel *panel);
 
-/* Handler for frame info labels toggle */
-static void onShowFrameInfoToggle(void *data)
-{
-	if(!showFrameInfoChkBox->isChecked)
-	{
-		SGE_TextLabelSetVisible(deltaLabel, false);
-		SGE_TextLabelSetVisible(fpsLabel, false);
-		SGE_TextLabelSetVisible(vsyncLabel, false);
-	}
-	else
-	{
-		SGE_TextLabelSetVisible(deltaLabel, true);
-		SGE_TextLabelSetVisible(fpsLabel, true);
-		SGE_TextLabelSetVisible(vsyncLabel, true);
-	}
-}
-
-static void SGE_GUI_DebugState_Init()
-{
-	SGE_GUI_ControlList *tempCurrentStateControls = currentStateControls;
-	currentStateControls = &debugStateControls;
-
-	debugStateLabel = SGE_CreateTextLabel("Debug State (F1)", 0, 0, SGE_COLOR_GREEN, NULL);
-	SGE_TextLabelSetPosition(debugStateLabel, 15, SGE_GetScreenHeight() - debugStateLabel->boundBox.h - 15);
-
-	/* Create the debug panel */
-	debugPanel = SGE_CreateWindowPanel("Debug Panel (F2)", 0, 0, 240, 200);
-	debugPanel->isVisible = false;
-	//debugPanel->borderColor = SGE_COLOR_GRAY;
-	debugPanel->alpha = 200;
-	//debugPanel->backgroundColor = SGE_COLOR_GRAY;
-	//debugPanel->borderColor = SGE_COLOR_BLACK;
-	debugPanel->isMovable = false;
-	debugPanel->isMinimizable = false;
-	debugPanel->isResizable = false;
-	SGE_WindowPanelSetPosition(debugPanel, SGE_GetScreenWidth() - debugPanel->boundBox.w, SGE_GetScreenHeight() - debugPanel->boundBox.h);
-
-	/* Create panel and state list labels */
-	panelListLabel = SGE_CreateTextLabel(panelsListStr, 10, 10, SGE_COLOR_WHITE, debugPanel);
-	panelListLabel->mode = SGE_TEXT_MODE_SHADED;
-	stateListLabel = SGE_CreateTextLabel(" ", 10, 35, SGE_COLOR_WHITE, debugPanel);
-	stateListLabel->mode = SGE_TEXT_MODE_SHADED;
-
-	/* Create toggles */
-	showBoundsLabel = SGE_CreateTextLabel("Show Bound Boxes:", 0, 0, SGE_COLOR_BLACK, debugPanel);
-	SGE_TextLabelSetPositionNextTo(showBoundsLabel, stateListLabel->boundBox, SGE_CONTROL_DIRECTION_DOWN, 0, 10);
-	showBoundsChkBox = SGE_CreateCheckBox(0, 0, debugPanel);
-	SGE_CheckBoxSetPositionNextTo(showBoundsChkBox, showBoundsLabel->boundBox, SGE_CONTROL_DIRECTION_RIGHT_CENTERED, 15, 0);
-	
-	showFrameInfoLbl = SGE_CreateTextLabel("Show Frame Info:", 0, 0, SGE_COLOR_BLACK, debugPanel);
-	SGE_TextLabelSetPositionNextTo(showFrameInfoLbl, showBoundsLabel->boundBox, SGE_CONTROL_DIRECTION_DOWN, 0, 5);
-	showFrameInfoChkBox = SGE_CreateCheckBox(0, 0, debugPanel);
-	SGE_CheckBoxSetPositionNextTo(showFrameInfoChkBox, showBoundsChkBox->boundBox, SGE_CONTROL_DIRECTION_DOWN, 0, 5);
-	showFrameInfoChkBox->onMouseUp = onShowFrameInfoToggle;
-	showFrameInfoChkBox->isChecked = true;
-
-	/* Create frame info labels */
-	deltaLabel = SGE_CreateTextLabel(" ", 0, 0, SGE_COLOR_WHITE, NULL);
-	SGE_TextLabelSetPositionNextTo(deltaLabel, debugStateLabel->boundBox, SGE_CONTROL_DIRECTION_UP, 0, 0);
-	SGE_TextLabelSetMode(deltaLabel, SGE_TEXT_MODE_SHADED);
-	// SGE_TextLabelSetBGColor(deltaLabel, SGE_COLOR_BLACK);
-
-	fpsLabel = SGE_CreateTextLabel(" ", 0, 0, SGE_COLOR_WHITE, NULL);
-	SGE_TextLabelSetPositionNextTo(fpsLabel, deltaLabel->boundBox, SGE_CONTROL_DIRECTION_UP, 0, 0);
-	SGE_TextLabelSetMode(fpsLabel, SGE_TEXT_MODE_SHADED);
-	// SGE_TextLabelSetBGColor(fpsLabel, SGE_COLOR_BLACK);
-
-	vsyncLabel = SGE_CreateTextLabel(" ", 0, 0, SGE_COLOR_WHITE, NULL);
-	SGE_TextLabelSetPositionNextTo(vsyncLabel, fpsLabel->boundBox, SGE_CONTROL_DIRECTION_UP, 0, 0);
-	SGE_TextLabelSetMode(vsyncLabel, SGE_TEXT_MODE_SHADED);
-	// SGE_TextLabelSetBGColor(vsyncLabel, SGE_COLOR_BLACK);
-
-	currentStateControls = tempCurrentStateControls;
-}
-
-static void SGE_GUI_DebugState_Update()
-{
-	/* Sync toggles with checkboxes */
-	showControlBounds = showBoundsChkBox->isChecked;
-	showFrameInfo = showFrameInfoChkBox->isChecked;
-
-	/* Update frame info labels */
-	if(showFrameInfo)
-	{
-		/* Calculate the framerate */
-		frameCounter++;
-		if((SDL_GetTicks() - lastFPSCountTime) > 1000)
-		{
-			countedFPS = frameCounter;
-			frameCounter = 0;
-			lastFPSCountTime = SDL_GetTicks();
-		}
-
-		if((SDL_GetTicks() - lastLabelUpdateTime) > labelUpdateInterval)
-		{
-			SGE_TextLabelSetTextf(deltaLabel, "Delta: %.3f s", SGE_GetDeltaTime());
-			SGE_TextLabelSetTextf(fpsLabel, "FPS: %d %s", countedFPS, SGE_GetFPSLimit() ? "(Capped)" : "");
-			if(SGE_IsVsync()) {
-				SGE_TextLabelSetTextf(vsyncLabel, "V-SYNC: ON");
-			}
-			else {
-				SGE_TextLabelSetTextf(vsyncLabel, "V-SYNC: OFF");
-			}
-			lastLabelUpdateTime = SDL_GetTicks();
-		}
-	}
-}
-
 const char *SGE_GetPanelListAsStr()
 {
 	return panelsListStr;
 }
 
-/* Prints a list of all panels in the current state onto a string */
+/* Prints a list of all panels in the current scene onto a string */
 static void printPanelsStr()
 {
 	int i = 0;
 	char tempStr[100];
 
-	SGE_WindowPanel **panels = currentStateControls->panels;
-	int panelCount = currentStateControls->panelCount;
+	SGE_WindowPanel **panels = currentSceneControls->panels;
+	int panelCount = currentSceneControls->panelCount;
 
 	if(panelCount > 0)
 	{
-		/* Don't update the panel list string if handling debug state controls */
-		if(panels[0] == debugPanel)
-		{
-			return;
-		}
-		
 		/* For more than one panels */
 		if(panelCount > 1)
 		{
@@ -452,9 +297,7 @@ bool SGE_GUI_Init()
 	}
 	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Opened default listBoxFont font.");
 
-	SGE_GUI_DebugState_Init();
-
-	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Finished Initializing SGE GUI.");
+	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Finished initializing SGE GUI.");
 	SGE_printf(SGE_LOG_DEBUG, "\n");
 	return true;
 }
@@ -493,89 +336,41 @@ void SGE_GUI_Quit()
 		TTF_CloseFont(listBoxFont);
 		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Closed default listBoxFont font.");
 	}
-
-	SGE_GUI_FreeControlList(&debugStateControls);
 	
 	SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Finished Quitting SGE GUI.");
 	SGE_printf(SGE_LOG_DEBUG, "\n");
 }
 
 void SGE_GUI_HandleEvents()
-{
-	if(SGE_GetSDLEvent()->type == SDL_KEYDOWN)
-	{
-		/* Toggle debug state visibility */
-		if(SGE_GetSDLEvent()->key.keysym.sym == SDLK_F1)
-		{
-			SGE_SetTextureWordWrap(500);
-			SGE_TextLabelSetTextf(panelListLabel, "Panels: %s", panelsListStr);
-			SGE_TextLabelSetTextf(stateListLabel, "States: %s", SGE_GetStateNames());
-			showDebugState = !showDebugState;
-		}
-		
-		/* Toggle debug panel visibility */
-		if(showDebugState)
-		{
-			if(SGE_GetSDLEvent()->key.keysym.sym == SDLK_F2)
-			{			
-				debugPanel->isVisible = !debugPanel->isVisible;
-			}
-		}
-	}
-	
-	SGE_GUI_ControlList_HandleEvents(currentStateControls);
-
-	if(showDebugState)
-	{
-		SGE_GUI_ControlList *tempCurrentStateControls = currentStateControls;
-		currentStateControls = &debugStateControls;
-		SGE_GUI_ControlList_HandleEvents(&debugStateControls);
-		currentStateControls = tempCurrentStateControls;
-	}
+{	
+	SGE_GUI_ControlList_HandleEvents(currentSceneControls);
 }
 
 void SGE_GUI_Update()
 {
-	SGE_GUI_ControlList_Update(currentStateControls);
-	
-	if(showDebugState)
-	{
-		SGE_GUI_ControlList *tempCurrentStateControls = currentStateControls;
-		currentStateControls = &debugStateControls;
-		SGE_GUI_DebugState_Update();
-		SGE_GUI_ControlList_Update(&debugStateControls);
-		currentStateControls = tempCurrentStateControls;
-	}
+	SGE_GUI_ControlList_Update(currentSceneControls);
 }
 
 void SGE_GUI_Render()
 {
-	SGE_GUI_ControlList_Render(currentStateControls);
-
-	if(showDebugState)
-	{
-		SGE_GUI_ControlList *tempCurrentStateControls = currentStateControls;
-		currentStateControls = &debugStateControls;
-		SGE_GUI_ControlList_Render(&debugStateControls);
-		currentStateControls = tempCurrentStateControls;
-	}
+	SGE_GUI_ControlList_Render(currentSceneControls);
 }
 
 /**
  * \brief Updates the control list to be used by SGE GUI functions.
  * 
- * This function is automatically called by SGE_SwitchStates() after a state switch is triggered
- * so the new state's SGE_GUI_ControlList is used by GUI functions.
- * It also resets the state of all the controls in the new state since a state switch might have
- * left the controls in an altered state. (e.g if a button is used to trigger a state switch)
+ * This function is automatically called by SGE_SwitchScenes() after a scene switch is triggered
+ * so the new scene's SGE_GUI_ControlList is used by GUI functions.
+ * It also resets the scene of all the controls in the new scene since a scene switch might have
+ * left the controls in an altered scene. (e.g if a button is used to trigger a scene switch)
  * 
- * \param nextState The name of the state that is being switched to.
+ * \param nextScene The name of the scene that is being switched to.
  */
-void SGE_GUI_UpdateCurrentState(const char *nextState)
+void SGE_GUI_UpdateCurrentScene(const char *nextScene)
 {
 	int i;
-	currentStateControls = SGE_GetStateGUIControlList(nextState);
-	if(currentStateControls == NULL)
+	currentSceneControls = SGE_GetSceneGUIControlList(nextScene);
+	if(currentSceneControls == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_WARNING, "Attempted switch to NULL GUI Control List!");
 		return;
@@ -584,19 +379,19 @@ void SGE_GUI_UpdateCurrentState(const char *nextState)
 	printPanelsStr();
 	
 	/* Reset control states */
-	for(i = 0; i < currentStateControls->buttonCount; i++)
+	for(i = 0; i < currentSceneControls->buttonCount; i++)
 	{
-		currentStateControls->buttons[i]->state = SGE_CONTROL_STATE_NORMAL;
+		currentSceneControls->buttons[i]->state = SGE_CONTROL_STATE_NORMAL;
 	}
 
-	for(i = 0; i < currentStateControls->checkBoxCount; i++)
+	for(i = 0; i < currentSceneControls->checkBoxCount; i++)
 	{
-		currentStateControls->checkBoxes[i]->state = SGE_CONTROL_STATE_NORMAL;
+		currentSceneControls->checkBoxes[i]->state = SGE_CONTROL_STATE_NORMAL;
 	}
 
-	for(i = 0; i < currentStateControls->sliderCount; i++)
+	for(i = 0; i < currentSceneControls->sliderCount; i++)
 	{
-		currentStateControls->sliders[i]->state = SGE_CONTROL_STATE_NORMAL;
+		currentSceneControls->sliders[i]->state = SGE_CONTROL_STATE_NORMAL;
 	}
 }
 
@@ -916,18 +711,18 @@ SGE_Button *SGE_CreateButton(const char *text, int x, int y, struct SGE_WindowPa
 	}
 	else
 	{
-		if(currentStateControls->buttonCount == STATE_MAX_BUTTONS)
+		if(currentSceneControls->buttonCount == STATE_MAX_BUTTONS)
 		{
 			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add Button! Max amount of parentless buttons [%d] reached.", STATE_MAX_BUTTONS);
 			free(button);
 			return NULL;
 		}
 		/* Add this new button to the top of the parentless buttons list */
-		currentStateControls->buttons[currentStateControls->buttonCount] = button;
-		currentStateControls->buttonCount += 1;
+		currentSceneControls->buttons[currentSceneControls->buttonCount] = button;
+		currentSceneControls->buttonCount += 1;
 		button->parentPanel = NULL;
 		button->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Button %d", currentStateControls->buttonCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Button %d", currentSceneControls->buttonCount);
 	}
 	
 	button->x = x;
@@ -1109,9 +904,9 @@ void SGE_ButtonRender(SGE_Button *button)
 			if(SGE_MouseInRect(&button->parentPanel->background) && !SGE_MouseInRect(&button->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&button->parentPanel->verticalScrollbarBG))
 				SGE_SetDrawColor(225, 225, 225, button->alpha);
 			
-			for(i = button->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
+			for(i = button->parentPanel->index + 1; i < currentSceneControls->panelCount; i++)
 			{
-				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentSceneControls->panels[i]->border))
 					SGE_SetDrawColor(0, 0, 0, button->alpha);
 			}
 		}
@@ -1183,18 +978,18 @@ SGE_CheckBox *SGE_CreateCheckBox(int x, int y, struct SGE_WindowPanel *panel)
 	}
 	else
 	{
-		if(currentStateControls->checkBoxCount == STATE_MAX_CHECKBOXES)
+		if(currentSceneControls->checkBoxCount == STATE_MAX_CHECKBOXES)
 		{
 			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add CheckBox! Max amount of parentless checkboxes [%d] reached.", STATE_MAX_CHECKBOXES);
 			free(checkBox);
 			return NULL;
 		}
 		/* Add this new checkbox to the top of the parentless checkboxes list */
-		currentStateControls->checkBoxes[currentStateControls->checkBoxCount] = checkBox;
-		currentStateControls->checkBoxCount += 1;
+		currentSceneControls->checkBoxes[currentSceneControls->checkBoxCount] = checkBox;
+		currentSceneControls->checkBoxCount += 1;
 		checkBox->parentPanel = NULL;
 		checkBox->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->CheckBox %d", currentStateControls->checkBoxCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->CheckBox %d", currentSceneControls->checkBoxCount);
 	}
 	
 	checkBox->x = x;
@@ -1356,9 +1151,9 @@ void SGE_CheckBoxRender(SGE_CheckBox *checkBox)
 			if(SGE_MouseInRect(&checkBox->parentPanel->background) && !SGE_MouseInRect(&checkBox->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&checkBox->parentPanel->verticalScrollbarBG))
 				SGE_SetDrawColor(150, 150, 150, checkBox->alpha);
 			
-			for(i = checkBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
+			for(i = checkBox->parentPanel->index + 1; i < currentSceneControls->panelCount; i++)
 			{
-				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentSceneControls->panels[i]->border))
 					SGE_SetDrawColor(0, 0, 0, checkBox->alpha);
 			}
 		}
@@ -1432,17 +1227,17 @@ SGE_TextLabel *SGE_CreateTextLabelCustom(const char *text, int x, int y, SDL_Col
 	}
 	else
 	{
-		if(currentStateControls->labelCount == STATE_MAX_LABELS)
+		if(currentSceneControls->labelCount == STATE_MAX_LABELS)
 		{
 			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add Label! Max amount of parentless labels [%d] reached.", STATE_MAX_LABELS);
 			free(label);
 			return NULL;
 		}
-		currentStateControls->labels[currentStateControls->labelCount] = label;
-		currentStateControls->labelCount += 1;
+		currentSceneControls->labels[currentSceneControls->labelCount] = label;
+		currentSceneControls->labelCount += 1;
 		label->parentPanel = NULL;
 		label->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Label %d", currentStateControls->labelCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Label %d", currentSceneControls->labelCount);
 	}
 	
 	label->x = x;
@@ -1657,17 +1452,17 @@ SGE_Slider *SGE_CreateSlider(int x, int y, struct SGE_WindowPanel *panel)
 	}
 	else
 	{
-		if(currentStateControls->sliderCount == STATE_MAX_SLIDERS)
+		if(currentSceneControls->sliderCount == STATE_MAX_SLIDERS)
 		{
 			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add Slider! Max amount of parentless sliders [%d] reached.", STATE_MAX_SLIDERS);
 			free(slider);
 			return NULL;
 		}
-		currentStateControls->sliders[currentStateControls->sliderCount] = slider;
-		currentStateControls->sliderCount += 1;
+		currentSceneControls->sliders[currentSceneControls->sliderCount] = slider;
+		currentSceneControls->sliderCount += 1;
 		slider->parentPanel = NULL;
 		slider->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Slider %d", currentStateControls->sliderCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->Slider %d", currentSceneControls->sliderCount);
 	}
 	
 	if(slider->parentPanel != NULL)
@@ -1867,9 +1662,9 @@ void SGE_SliderRender(SGE_Slider *slider)
 			if(SGE_MouseInRect(&slider->parentPanel->background) && !SGE_MouseInRect(&slider->parentPanel->horizontalScrollbarBG) && !SGE_MouseInRect(&slider->parentPanel->verticalScrollbarBG))
 				SGE_SetDrawColor(225, 225, 225, slider->alpha);
 			
-			for(i = slider->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
+			for(i = slider->parentPanel->index + 1; i < currentSceneControls->panelCount; i++)
 			{
-				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentSceneControls->panels[i]->border))
 					SGE_SetDrawColor(0, 0, 0, slider->alpha);
 			}
 		}
@@ -1972,18 +1767,18 @@ SGE_TextInputBox *SGE_CreateTextInputBox(int maxTextLength, int x, int y, struct
 	}
 	else
 	{
-		if(currentStateControls->textInputBoxCount == STATE_MAX_TEXT_INPUT_BOXES)
+		if(currentSceneControls->textInputBoxCount == STATE_MAX_TEXT_INPUT_BOXES)
 		{
 			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add TextInputBox! Max amount of parentless textInputBoxes [%d] reached.", STATE_MAX_TEXT_INPUT_BOXES);
 			free(textInputBox);
 			return NULL;
 		}
 		/* Add this new textInputBox to the top of the parentless buttons list */
-		currentStateControls->textInputBoxes[currentStateControls->textInputBoxCount] = textInputBox;
-		currentStateControls->textInputBoxCount += 1;
+		currentSceneControls->textInputBoxes[currentSceneControls->textInputBoxCount] = textInputBox;
+		currentSceneControls->textInputBoxCount += 1;
 		textInputBox->parentPanel = NULL;
 		textInputBox->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->TextInputBox %d", currentStateControls->textInputBoxCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->TextInputBox %d", currentSceneControls->textInputBoxCount);
 	}
 	
 	textInputBox->x = x;
@@ -2289,9 +2084,9 @@ void SGE_TextInputBoxRender(SGE_TextInputBox *textInputBox)
 				SGE_SetDrawColor(255, 255, 255, textInputBox->alpha);
 			
 			int i = 0;
-			for(i = textInputBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
+			for(i = textInputBox->parentPanel->index + 1; i < currentSceneControls->panelCount; i++)
 			{
-				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentSceneControls->panels[i]->border))
 					SGE_SetDrawColor(0, 0, 0, textInputBox->alpha);
 			}
 		}
@@ -2375,18 +2170,18 @@ SGE_ListBox *SGE_CreateListBox(int listCount, char list[][LIST_OPTION_LENGTH], i
 	}
 	else
 	{
-		if(currentStateControls->listBoxCount == STATE_MAX_LISTBOXES)
+		if(currentSceneControls->listBoxCount == STATE_MAX_LISTBOXES)
 		{
 			SGE_GUI_LogPrintLine(SGE_LOG_WARNING, "Failed to add ListBox! Max amount of parentless listBoxes [%d] reached.", STATE_MAX_LISTBOXES);
 			free(listBox);
 			return NULL;
 		}
 		/* Add this new listBox to the top of the parentless listBoxes list */
-		currentStateControls->listBoxes[currentStateControls->listBoxCount] = listBox;
-		currentStateControls->listBoxCount += 1;
+		currentSceneControls->listBoxes[currentSceneControls->listBoxCount] = listBox;
+		currentSceneControls->listBoxCount += 1;
 		listBox->parentPanel = NULL;
 		listBox->alpha = 255;
-		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->ListBox %d", currentStateControls->listBoxCount);
+		SGE_GUI_LogPrintLine(SGE_LOG_DEBUG, "Added Control: {NULL}->ListBox %d", currentSceneControls->listBoxCount);
 	}
 	
 	listBox->x = x;
@@ -2560,9 +2355,9 @@ void SGE_ListBoxRender(SGE_ListBox *listBox)
 				SGE_SetDrawColor(150, 150, 150, listBox->alpha);
 			
 			int i = 0;
-			for(i = listBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
+			for(i = listBox->parentPanel->index + 1; i < currentSceneControls->panelCount; i++)
 			{
-				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentSceneControls->panels[i]->border))
 					SGE_SetDrawColor(0, 0, 0, listBox->alpha);
 			}
 		}
@@ -2591,9 +2386,9 @@ void SGE_ListBoxRender(SGE_ListBox *listBox)
 						SGE_SetDrawColor(50, 50, 150, listBox->alpha);
 					
 					int i = 0;
-					for(i = listBox->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
+					for(i = listBox->parentPanel->index + 1; i < currentSceneControls->panelCount; i++)
 					{
-						if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
+						if(SGE_MouseInRect(&currentSceneControls->panels[i]->border))
 							SGE_SetDrawColor(255, 255, listBox->alpha, listBox->alpha);
 					}
 				}
@@ -2691,9 +2486,9 @@ void SGE_MinimizeButtonHandleEvents(SGE_MinimizeButton *minButton)
 			if(SGE_MouseInRect(&minButton->boundBox))
 			{
 				minButton->state = SGE_CONTROL_STATE_CLICKED;
-				for(i = minButton->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
+				for(i = minButton->parentPanel->index + 1; i < currentSceneControls->panelCount; i++)
 				{
-					if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
+					if(SGE_MouseInRect(&currentSceneControls->panels[i]->border))
 						minButton->state = SGE_CONTROL_STATE_NORMAL;
 				}
 			}
@@ -2724,9 +2519,9 @@ void SGE_MinimizeButtonHandleEvents(SGE_MinimizeButton *minButton)
 			if(SGE_MouseInRect(&minButton->boundBox))
 			{
 				minButton->state = SGE_CONTROL_STATE_HOVER;
-				for(i = minButton->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
+				for(i = minButton->parentPanel->index + 1; i < currentSceneControls->panelCount; i++)
 				{
-					if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
+					if(SGE_MouseInRect(&currentSceneControls->panels[i]->border))
 						minButton->state = SGE_CONTROL_STATE_NORMAL;
 				}
 			}
@@ -2763,9 +2558,9 @@ void SGE_MinimizeButtonRender(SGE_MinimizeButton *minButton)
 	{
 		SGE_SetDrawColor(225, 225, 225, minButton->parentPanel->alpha);
 		
-		for(i = minButton->parentPanel->index + 1; i < currentStateControls->panelCount; i++)
+		for(i = minButton->parentPanel->index + 1; i < currentSceneControls->panelCount; i++)
 		{
-			if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
+			if(SGE_MouseInRect(&currentSceneControls->panels[i]->border))
 				SGE_SetDrawColor(0, 0, 0, minButton->parentPanel->alpha);
 		}
 	}
@@ -2776,8 +2571,8 @@ SGE_WindowPanel *SGE_CreateWindowPanel(const char *title, int x, int y, int w, i
 {
 	int i = 0;
 
-	SGE_WindowPanel **panels = currentStateControls->panels;
-	int panelCount = currentStateControls->panelCount;
+	SGE_WindowPanel **panels = currentSceneControls->panels;
+	int panelCount = currentSceneControls->panelCount;
 	
 	if(panelCount == STATE_MAX_PANELS)
 	{
@@ -2789,9 +2584,9 @@ SGE_WindowPanel *SGE_CreateWindowPanel(const char *title, int x, int y, int w, i
 	SGE_WindowPanel *panel = NULL;
 	panel = (SGE_WindowPanel *)malloc(sizeof(SGE_WindowPanel));
 	
-	panel->index = currentStateControls->panelCount;
-	panels[currentStateControls->panelCount] = panel;
-	currentStateControls->panelCount += 1;
+	panel->index = currentSceneControls->panelCount;
+	panels[currentSceneControls->panelCount] = panel;
+	currentSceneControls->panelCount += 1;
 	
 	strncpy(panel->titleStr, title, 50);
 	SGE_SetActiveWindowPanel(panel);
@@ -2943,8 +2738,8 @@ void SGE_WindowPanelHandleEvents(SGE_WindowPanel *panel)
 {
 	int i = 0;
 
-	SGE_WindowPanel **panels = currentStateControls->panels;
-	int panelCount = currentStateControls->panelCount;
+	SGE_WindowPanel **panels = currentSceneControls->panels;
+	int panelCount = currentSceneControls->panelCount;
 	
 	if(panel->isMinimizable)
 	{
@@ -3311,9 +3106,9 @@ void SGE_WindowPanelRender(SGE_WindowPanel *panel)
 		{
 			SGE_SetDrawColor(225, 225, 225, panel->alpha);
 			
-			for(i = panel->index + 1; i < currentStateControls->panelCount; i++)
+			for(i = panel->index + 1; i < currentSceneControls->panelCount; i++)
 			{
-				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentSceneControls->panels[i]->border))
 					SGE_SetDrawColor(0, 0, 0, panel->alpha);
 			}
 		}
@@ -3336,9 +3131,9 @@ void SGE_WindowPanelRender(SGE_WindowPanel *panel)
 		{
 			SGE_SetDrawColor(225, 225, 225, panel->alpha);
 			
-			for(i = panel->index + 1; i < currentStateControls->panelCount; i++)
+			for(i = panel->index + 1; i < currentSceneControls->panelCount; i++)
 			{
-				if(SGE_MouseInRect(&currentStateControls->panels[i]->border))
+				if(SGE_MouseInRect(&currentSceneControls->panels[i]->border))
 					SGE_SetDrawColor(0, 0, 0, panel->alpha);
 			}
 		}
@@ -3478,9 +3273,9 @@ void SGE_SetActiveWindowPanel(SGE_WindowPanel *panel)
 	int i = 0;
 	
 	/* Sets all but the given panel as active */
-	for(i = 0; i < currentStateControls->panelCount; i++)
+	for(i = 0; i < currentSceneControls->panelCount; i++)
 	{
-		currentStateControls->panels[i]->isActive = false;
+		currentSceneControls->panels[i]->isActive = false;
 	}
 	panel->isActive = true;
 	SGE_SendActivePanelToTop();
@@ -3488,7 +3283,7 @@ void SGE_SetActiveWindowPanel(SGE_WindowPanel *panel)
 
 SGE_WindowPanel *SGE_GetActiveWindowPanel()
 {
-	return currentStateControls->panels[currentStateControls->panelCount - 1];
+	return currentSceneControls->panels[currentSceneControls->panelCount - 1];
 }
 
 void SGE_SendActivePanelToTop()
@@ -3496,8 +3291,8 @@ void SGE_SendActivePanelToTop()
 	int i = 0;
 	SGE_WindowPanel *tempPanel = NULL;
 
-	SGE_WindowPanel **panels = currentStateControls->panels;
-	int panelCount = currentStateControls->panelCount;
+	SGE_WindowPanel **panels = currentSceneControls->panels;
+	int panelCount = currentSceneControls->panelCount;
 	
 	/* Finds the active panel and sends it to the top of the panels stack */
 	for(i = 0; i < panelCount - 1; i++)

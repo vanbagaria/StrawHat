@@ -1,5 +1,5 @@
 #include "SGE.h"
-#include "SGE_GameState.h"
+#include "SGE_Scene.h"
 #include "SGE_Logger.h"
 #include "SGE_GUI.h"
 
@@ -22,7 +22,7 @@ static const SDL_version *SDL_IMG_Version_DLL;
 static const SDL_version *SDL_TTF_Version_DLL;
 static const SDL_version *SDL_MIX_Version_DLL;
 
-static SDL_Window   *window   = NULL;
+static SDL_Window *window   = NULL;
 static SDL_Event event;
 
 static const Uint8 *keyboardState = NULL;
@@ -55,61 +55,61 @@ static unsigned int lastFrameTime  = 0;
 static bool isFrameRateCapped = false;
 static double deltaTime = 0;
 
-/* Current state function pointers */
-static char currentStateName[20] = "SGE";
-static bool (*currentStateInit)()         = NULL;
-static void (*currentStateQuit)()         = NULL;
-static void (*currentStateHandleEvents)() = NULL;
-static void (*currentStateUpdate)()       = NULL;
-static void (*currentStateRender)()       = NULL;
+/* Current scene function pointers */
+static char currentSceneName[20] = "SGE";
+static bool (*currentSceneInit)()         = NULL;
+static void (*currentSceneQuit)()         = NULL;
+static void (*currentSceneHandleEvents)() = NULL;
+static void (*currentSceneUpdate)()       = NULL;
+static void (*currentSceneRender)()       = NULL;
 
-/* Fallbacks defined in SGE_GameState.c */
+/* Fallbacks defined in SGE_GameScene.c */
 bool SGE_FallbackInit();
 void SGE_FallbackQuit();
 void SGE_FallbackHandleEvents();
 void SGE_FallbackUpdate();
 void SGE_FallbackRender();
 
-/* Defined in SGE_GameState.c */
-void SGE_CreateStateList();
-void SGE_DestroyStateList();
-void SGE_InitState(const char *name);
-void SGE_QuitState(const char *name);
-void SGE_SwitchStates();
-void SGE_QuitLoadedStates();
+/* Defined in SGE_GameScene.c */
+void SGE_CreateSceneList();
+void SGE_DestroySceneList();
+void SGE_InitScene(const char *name);
+void SGE_QuitScene(const char *name);
+void SGE_SwitchScenes();
+void SGE_QuitLoadedScenes();
 
-/* Returns the name of the current state */
-const char *SGE_GetCurrentStateName()
+/* Returns the name of the current scene */
+const char *SGE_GetCurrentSceneName()
 {
-	return currentStateName;
+	return currentSceneName;
 }
 
 /**
- * \brief Sets the current state function pointers.
+ * \brief Sets the current scene function pointers.
  * 
- * \param name The name of the current state.
- * \param init The init function of the state.
- * \param quit The quit function of the state.
- * \param handleEvents The handleEvents function of the state.
- * \param update The update function of the state.
- * \param render The render function of the state.
+ * \param name The name of the current scene.
+ * \param init The init function of the scene.
+ * \param quit The quit function of the scene.
+ * \param handleEvents The handleEvents function of the scene.
+ * \param update The update function of the scene.
+ * \param render The render function of the scene.
  */
-void SGE_SetCurrentStateFunctions(const char *name, bool (*init)(), void (*quit)(), void (*handleEvents)(), void (*update)(), void (*render)())
+void SGE_SetCurrentSceneFunctions(const char *name, bool (*init)(), void (*quit)(), void (*handleEvents)(), void (*update)(), void (*render)())
 {
-	strncpy(currentStateName, name, 20);
-	currentStateInit = (init == NULL) ? SGE_FallbackInit : init;
-	currentStateQuit = (quit == NULL) ? SGE_FallbackQuit : quit;
-	currentStateHandleEvents = (handleEvents == NULL) ? SGE_FallbackHandleEvents : handleEvents;
-	currentStateUpdate = (update == NULL) ? SGE_FallbackUpdate : update;
-	currentStateRender = (render == NULL) ? SGE_FallbackRender : render;
+	strncpy(currentSceneName, name, 20);
+	currentSceneInit = (init == NULL) ? SGE_FallbackInit : init;
+	currentSceneQuit = (quit == NULL) ? SGE_FallbackQuit : quit;
+	currentSceneHandleEvents = (handleEvents == NULL) ? SGE_FallbackHandleEvents : handleEvents;
+	currentSceneUpdate = (update == NULL) ? SGE_FallbackUpdate : update;
+	currentSceneRender = (render == NULL) ? SGE_FallbackRender : render;
 }
 
 /*
- * Sets the current state function pointers to a registered state's functions to set it as the first state started by SGE_Run().
- * This function is defined in SGE_GameState.c, it is called by SGE_Run() to determine 
- * the first state that SGE should start with.
+ * Sets the current scene function pointers to a registered scene's functions to set it as the first scene started by SGE_Run().
+ * This function is defined in SGE_GameScene.c, it is called by SGE_Run() to determine 
+ * the first scene that SGE should start with.
  */
-void SGE_SetEntryStateFromList(const char *name);
+void SGE_SetEntrySceneFromList(const char *name);
 
 /* Defined in SGE_Graphics.c */
 bool SGE_Graphics_Init();
@@ -124,7 +124,7 @@ void SGE_GUI_Update();
 void SGE_GUI_Render();
 
 /*  Updates the current control list pointer in SGE_GUI.c */
-void SGE_GUI_UpdateCurrentState(const char *nextState);
+void SGE_GUI_UpdateCurrentScene(const char *nextScene);
 
 SDL_Event *SGE_GetSDLEvent()
 {
@@ -331,7 +331,7 @@ SGE_InitConfig SGE_CreateInitConfig()
 
 	SGE_printf(SGE_LOG_DEBUG, "\n");
 
-	SGE_CreateStateList();
+	SGE_CreateSceneList();
 	
 	if(!SGE_GUI_Init())
 	{
@@ -355,25 +355,25 @@ SGE_InitConfig SGE_CreateInitConfig()
 	return true;
 }
 
-void SGE_Run(const char *entryStateName)
+void SGE_Start(const char *entrySceneName)
 {
 	if(!isSGEInit)
 	{
-		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): Cannot start state \"%s\", SGE is not initialized.", __FUNCTION__, entryStateName);
+		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): Cannot start scene \"%s\", SGE is not initialized.", __FUNCTION__, entrySceneName);
 		return;
 	}
 
 	if(isRunning)
 	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "%s(): Cannot start state \"%s\", SGE is already running.", __FUNCTION__, entryStateName);
+		SGE_LogPrintLine(SGE_LOG_WARNING, "%s(): Cannot start scene \"%s\", SGE is already running.", __FUNCTION__, entrySceneName);
 		return;
 	}
 
 	isRunning = true;
 
-	SGE_SetEntryStateFromList(entryStateName);
-	SGE_GUI_UpdateCurrentState(currentStateName);
-	SGE_InitState(currentStateName);
+	SGE_SetEntrySceneFromList(entrySceneName);
+	SGE_GUI_UpdateCurrentScene(currentSceneName);
+	SGE_InitScene(currentSceneName);
 
 	while(!shouldQuit)
 	{
@@ -391,20 +391,20 @@ void SGE_Run(const char *entryStateName)
 				shouldQuit = true;
 			}
 			SGE_GUI_HandleEvents();
-			currentStateHandleEvents();
+			currentSceneHandleEvents();
 		}
 		
 		/* Logic Updates */
 		SGE_GUI_Update();
-		currentStateUpdate();
+		currentSceneUpdate();
 		
 		/* Rendering */
 		SGE_ClearScreenSDL(defaultScreenClearColor);
-		currentStateRender();
+		currentSceneRender();
 		SGE_GUI_Render();
 		SDL_RenderPresent(SGE_GetSDLRenderer());
 
-		SGE_SwitchStates();
+		SGE_SwitchScenes();
 		
 		if(isFrameRateCapped)
 		{			
@@ -417,10 +417,26 @@ void SGE_Run(const char *entryStateName)
 		}
 	}
 	
-	SGE_QuitState(currentStateName);
-	SGE_SetCurrentStateFunctions("SGE", NULL, NULL, NULL, NULL, NULL);
+	SGE_QuitScene(currentSceneName);
+	SGE_SetCurrentSceneFunctions("SGE", NULL, NULL, NULL, NULL, NULL);
 	
-	SGE_DestroyStateList();
+	isRunning = false;
+}
+
+void SGE_Stop()
+{
+	shouldQuit = true;
+}
+
+void SGE_Quit()
+{
+	if(!isSGEInit)
+	{
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot quit, SGE is not initialized.");
+		return;
+	}
+
+	SGE_DestroySceneList();
 	SGE_GUI_Quit();
 	
 	Mix_CloseAudio();
@@ -436,14 +452,7 @@ void SGE_Run(const char *entryStateName)
 	SDL_Quit();
 
 	isSGEInit = false;
-	isRunning = false;
 	SGE_LogPrintLine(SGE_LOG_INFO, "Quit SGE.");
-}
-
-void SGE_Quit()
-{
-	SGE_LogPrintLine(SGE_LOG_INFO, "SGE Quit Requested...");
-	shouldQuit = true;
 }
 
 /*

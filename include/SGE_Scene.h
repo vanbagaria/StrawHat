@@ -26,7 +26,7 @@ void SGE_AddScene(const char *name, bool (*init)(), void (*quit)(), void (*handl
  * or by keeping the current scene loaded. Keeping a scene loaded will allow fast
  * switching to that scene as the init function will be skipped for a loaded scene.
  * It is safe to never quit a scene before switching, since all loaded scenes are quit
- * when the application exits.
+ * when SGE_Quit() is called.
  * 
  * \param nextSceneName The name of the scene to switch to.
  * \param quitCurrent  Whether to call the current scene's quit function before switching.
@@ -49,6 +49,13 @@ bool SGE_SceneIsRegistered(const char *name);
  *         false if the scene's quit function has been called.
  */
 bool SGE_SceneIsLoaded(const char *name);
+
+/**
+ * \brief Returns the name of the currently active game scene.
+ * 
+ * \return The name of the current game scene. 
+ */
+const char *SGE_GetCurrentSceneName();
 
 /**
  * \brief Returns a string containing a list of names of all registered scenes.

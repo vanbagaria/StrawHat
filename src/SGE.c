@@ -22,7 +22,7 @@ static const SDL_version *SDL_IMG_Version_DLL;
 static const SDL_version *SDL_TTF_Version_DLL;
 static const SDL_version *SDL_MIX_Version_DLL;
 
-static SDL_Window *window   = NULL;
+static SDL_Window *window = NULL;
 static SDL_Event event;
 
 static const Uint8 *keyboardState = NULL;
@@ -55,76 +55,22 @@ static unsigned int lastFrameTime  = 0;
 static bool isFrameRateCapped = false;
 static double deltaTime = 0;
 
-/* Current scene function pointers */
-static char currentSceneName[20] = "SGE";
-static bool (*currentSceneInit)()         = NULL;
-static void (*currentSceneQuit)()         = NULL;
-static void (*currentSceneHandleEvents)() = NULL;
-static void (*currentSceneUpdate)()       = NULL;
-static void (*currentSceneRender)()       = NULL;
+/* Defined in SGE_Scene.c */
+void SGE_Scene_Init();
+void SGE_Scene_Quit();
+void SGE_Scene_HandleEvents();
+void SGE_Scene_Update();
+void SGE_Scene_Render();
 
-/* Fallbacks defined in SGE_GameScene.c */
-bool SGE_FallbackInit();
-void SGE_FallbackQuit();
-void SGE_FallbackHandleEvents();
-void SGE_FallbackUpdate();
-void SGE_FallbackRender();
-
-/* Defined in SGE_GameScene.c */
-void SGE_CreateSceneList();
-void SGE_DestroySceneList();
+void SGE_SetEntrySceneFromList(const char *name);
 void SGE_InitScene(const char *name);
 void SGE_QuitScene(const char *name);
 void SGE_SwitchScenes();
-void SGE_QuitLoadedScenes();
-
-/* Returns the name of the current scene */
-const char *SGE_GetCurrentSceneName()
-{
-	return currentSceneName;
-}
-
-/**
- * \brief Sets the current scene function pointers.
- * 
- * \param name The name of the current scene.
- * \param init The init function of the scene.
- * \param quit The quit function of the scene.
- * \param handleEvents The handleEvents function of the scene.
- * \param update The update function of the scene.
- * \param render The render function of the scene.
- */
-void SGE_SetCurrentSceneFunctions(const char *name, bool (*init)(), void (*quit)(), void (*handleEvents)(), void (*update)(), void (*render)())
-{
-	strncpy(currentSceneName, name, 20);
-	currentSceneInit = (init == NULL) ? SGE_FallbackInit : init;
-	currentSceneQuit = (quit == NULL) ? SGE_FallbackQuit : quit;
-	currentSceneHandleEvents = (handleEvents == NULL) ? SGE_FallbackHandleEvents : handleEvents;
-	currentSceneUpdate = (update == NULL) ? SGE_FallbackUpdate : update;
-	currentSceneRender = (render == NULL) ? SGE_FallbackRender : render;
-}
-
-/*
- * Sets the current scene function pointers to a registered scene's functions to set it as the first scene started by SGE_Run().
- * This function is defined in SGE_GameScene.c, it is called by SGE_Run() to determine 
- * the first scene that SGE should start with.
- */
-void SGE_SetEntrySceneFromList(const char *name);
 
 /* Defined in SGE_Graphics.c */
 bool SGE_Graphics_Init();
 void SGE_Graphics_Quit();
 bool SGE_Graphics_SetVSync();
-
-/* Defined in SGE_GUI.c */
-bool SGE_GUI_Init();
-void SGE_GUI_Quit();
-void SGE_GUI_HandleEvents();
-void SGE_GUI_Update();
-void SGE_GUI_Render();
-
-/*  Updates the current control list pointer in SGE_GUI.c */
-void SGE_GUI_UpdateCurrentScene(const char *nextScene);
 
 SDL_Event *SGE_GetSDLEvent()
 {
@@ -255,13 +201,14 @@ SGE_InitConfig SGE_CreateInitConfig()
 		isVsyncOn = true;
 	}
 
-	shouldQuit = false;
 	screenWidth = width;
 	screenHeight = height;
 	
 	SDL_Init(SDL_INIT_EVERYTHING);
 	IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_WEBP);
 	TTF_Init();
+
+	SGE_Scene_Init();
 
 	SGE_LogPrintLine(SGE_LOG_INFO, "Straw Hat Game Engine");
 	SGE_LogPrintLine(SGE_LOG_DEBUG, "Platform: %s", SDL_GetPlatform());
@@ -270,14 +217,12 @@ SGE_InitConfig SGE_CreateInitConfig()
 	if(window == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to create Game Window! SDL_Error: %s", SDL_GetError());
-		shouldQuit = true;
 		return false;
 	}
 
 	if(!SGE_Graphics_Init(window, conf.vsync))
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to create Game Renderer! SDL_Error: %s", SDL_GetError());
-		shouldQuit = true;
 		return false;
 	}
 	
@@ -285,7 +230,6 @@ SGE_InitConfig SGE_CreateInitConfig()
 	if(defaultFont == NULL)
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to load default font! TTF_Error: %s", TTF_GetError());
-		shouldQuit = true;
 		return false;
 	}
 
@@ -330,13 +274,12 @@ SGE_InitConfig SGE_CreateInitConfig()
 	SGE_LogPrintLine(SGE_LOG_DEBUG, "SDL Mixer Version: %d.%d.%d (Linked)", SDL_MIX_Version_DLL->major, SDL_MIX_Version_DLL->minor, SDL_MIX_Version_DLL->patch);
 
 	SGE_printf(SGE_LOG_DEBUG, "\n");
-
-	SGE_CreateSceneList();
 	
 	if(!SGE_GUI_Init())
 	{
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed to initialize SGE GUI!");
-		shouldQuit = true;
+
+		SGE_Scene_Quit();
 
 		SGE_Graphics_Quit();
 		SDL_DestroyWindow(window);
@@ -370,10 +313,10 @@ void SGE_Start(const char *entrySceneName)
 	}
 
 	isRunning = true;
+	shouldQuit = false;
 
 	SGE_SetEntrySceneFromList(entrySceneName);
-	SGE_GUI_UpdateCurrentScene(currentSceneName);
-	SGE_InitScene(currentSceneName);
+	SGE_InitScene(SGE_GetCurrentSceneName());
 
 	while(!shouldQuit)
 	{
@@ -390,18 +333,15 @@ void SGE_Start(const char *entrySceneName)
 			{
 				shouldQuit = true;
 			}
-			SGE_GUI_HandleEvents();
-			currentSceneHandleEvents();
+			SGE_Scene_HandleEvents();
 		}
 		
 		/* Logic Updates */
-		SGE_GUI_Update();
-		currentSceneUpdate();
+		SGE_Scene_Update();
 		
 		/* Rendering */
 		SGE_ClearScreenSDL(defaultScreenClearColor);
-		currentSceneRender();
-		SGE_GUI_Render();
+		SGE_Scene_Render();
 		SDL_RenderPresent(SGE_GetSDLRenderer());
 
 		SGE_SwitchScenes();
@@ -417,8 +357,7 @@ void SGE_Start(const char *entrySceneName)
 		}
 	}
 	
-	SGE_QuitScene(currentSceneName);
-	SGE_SetCurrentSceneFunctions("SGE", NULL, NULL, NULL, NULL, NULL);
+	SGE_QuitScene(SGE_GetCurrentSceneName());
 	
 	isRunning = false;
 }
@@ -436,7 +375,13 @@ void SGE_Quit()
 		return;
 	}
 
-	SGE_DestroySceneList();
+	if(isRunning)
+	{
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Cannot quit SGE when a scene is running. Use SGE_Stop() instead.");
+		return;
+	}
+
+	SGE_Scene_Quit();
 	SGE_GUI_Quit();
 	
 	Mix_CloseAudio();
@@ -531,7 +476,7 @@ void SGE_SetFPSLimit(int fps)
 	}
 }
 
-bool SGE_RectInRect(const SDL_Rect *r1, const SDL_Rect *r2)
+bool SGE_IsRectInRect(const SDL_Rect *r1, const SDL_Rect *r2)
 {
 	if(r1 == NULL || r2 == NULL)
 	{
@@ -549,7 +494,7 @@ bool SGE_RectInRect(const SDL_Rect *r1, const SDL_Rect *r2)
 	return false;
 }
 
-bool SGE_MouseInRect(const SDL_Rect *rect)
+bool SGE_IsMouseInRect(const SDL_Rect *rect)
 {
 	if(rect == NULL)
 	{

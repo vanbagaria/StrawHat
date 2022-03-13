@@ -13,7 +13,7 @@ void SGE_DestroyGUIControlList(SGE_GUI_ControlList *controls);
 void SGE_GUI_FreeControlList(SGE_GUI_ControlList *controls);
 
 /* Used to update the current control list pointer in SGE_GUI.c */
-void SGE_GUI_UpdateCurrentScene(const char *nextScene);
+void SGE_GUI_UpdateCurrentScene(SGE_GUI_ControlList *controls);
 
 /**
  * \brief Internally used game scene structure.
@@ -35,6 +35,9 @@ typedef struct
 /* The internal list of registered scenes */
 static SGE_LinkedList *sceneList = NULL;
 
+/* The current scene */
+static SGE_Scene currentScene = {"SGE", NULL, NULL, NULL, NULL, NULL};
+
 /* This is not NULL when a SGE_SwitchToScene() call is made */
 static SGE_Scene *nextSwitchScene = NULL;
 
@@ -43,6 +46,62 @@ static bool switchQuitCurrent = false;
 
 /* A string representing the names of all registered scenes */
 static char listString[1000];
+
+const char *SGE_GetCurrentSceneName()
+{
+	return currentScene.name;
+}
+
+/* Fallbacks used when a scene is created with NULL function pointers */
+
+bool SGE_FallbackInit()
+{
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "Init is set to NULL, using fallback!");
+	return true;
+}
+
+void SGE_FallbackQuit()
+{
+	SGE_LogPrintLine(SGE_LOG_DEBUG, "Quit is set to NULL, using fallback!");
+}
+
+void SGE_FallbackHandleEvents(){}
+void SGE_FallbackUpdate(){}
+void SGE_FallbackRender(){}
+
+/**
+ * \brief Fills an SGE_Scene structure
+ * 
+ * \param scene Address of the SGE_Scene structure to be filled.
+ * \param name The name of the game scene.
+ * \param init Address of the initialization function for the scene.
+ * \param quit Address of the clean up function for the scene.
+ * \param handleEvents Address of the event handling function for the scene.
+ * \param update Address of the frame update function for the scene.
+ * \param render Address of the frame render function for the scene.
+ */
+static void SGE_SetSceneFunctions(SGE_Scene *scene, const char *name, bool (*init)(), void (*quit)(), void (*handleEvents)(), void (*update)(), void (*render)())
+{
+	if(scene == NULL)
+	{
+		SGE_LogPrintLine(SGE_LOG_WARNING, "Attempt to set functions for NULL scene!");
+		return;
+	}
+	
+	strncpy(scene->name, name, 20);
+	scene->init = (init == NULL) ? SGE_FallbackInit : init;
+	scene->quit = (quit == NULL) ? SGE_FallbackQuit : quit;
+	scene->handleEvents = (handleEvents == NULL) ? SGE_FallbackHandleEvents : handleEvents;
+	scene->update = (update == NULL) ? SGE_FallbackUpdate : update;
+	scene->render = (render == NULL) ? SGE_FallbackRender : render;
+}
+
+static void SGE_SetCurrentScene(SGE_Scene *scene)
+{
+	SGE_SetSceneFunctions(&currentScene, scene->name, scene->init, scene->quit, scene->handleEvents, scene->update, scene->render);
+	currentScene.controls = scene->controls;
+	SGE_GUI_UpdateCurrentScene(scene->controls);
+}
 
 /**
  * \brief Callback function for SGE_LLProcess() that finds a given scene in the scene list.
@@ -100,19 +159,13 @@ bool SGE_SceneIsRegistered(const char *name)
 }
 
 /**
- * \brief Returns the SGE_GUI_ControlList structure for a registered scene.
+ * \brief Returns the SGE_GUI_ControlList of the current scene.
  * 
- * \param name The name of the registered scene whose GUI control list should be returned.
- * \return The address of the GUI control list of the registered scene.
+ * \return The address of the GUI control list of the current scene.
  */
-SGE_GUI_ControlList *SGE_GetSceneGUIControlList(const char *name)
+SGE_GUI_ControlList *SGE_GetCurrentGUIControlList()
 {
-	SGE_Scene *scene = SGE_GetSceneFromList(name);
-	if(scene == NULL)
-	{
-		return NULL;
-	}
-	return scene->controls;
+	return currentScene.controls;
 }
 
 /**
@@ -168,24 +221,7 @@ int SGE_GetSceneCount()
 	return sceneList->count;
 }
 
-/* Fallbacks used when a scene is created with NULL function pointers */
-
-bool SGE_FallbackInit()
-{
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Init is set to NULL, using fallback!");
-	return true;
-}
-
-void SGE_FallbackQuit()
-{
-	SGE_LogPrintLine(SGE_LOG_DEBUG, "Quit is set to NULL, using fallback!");
-}
-
-void SGE_FallbackHandleEvents(){}
-void SGE_FallbackUpdate(){}
-void SGE_FallbackRender(){}
-
-/* A fallback scene used when the entry scene is not found by SGE_Run() */
+/* A fallback scene used when the entry scene is not found for SGE_Start(). */
 
 static TTF_Font *font = NULL;
 
@@ -204,40 +240,7 @@ static void SGE_FallbackScene_Quit()
 }
 
 /**
- * \brief Fills an SGE_Scene structure
- * 
- * \param scene Address of the SGE_Scene structure to be filled.
- * \param name The name of the game scene.
- * \param init Address of the initialization function for the scene.
- * \param quit Address of the clean up function for the scene.
- * \param handleEvents Address of the event handling function for the scene.
- * \param update Address of the frame update function for the scene.
- * \param render Address of the frame render function for the scene.
- */
-static void SGE_SetSceneFunctions(SGE_Scene *scene, const char *name, bool (*init)(), void (*quit)(), void (*handleEvents)(), void (*update)(), void (*render)())
-{
-	if(scene == NULL)
-	{
-		SGE_LogPrintLine(SGE_LOG_WARNING, "Attempt to set functions for NULL scene!");
-		return;
-	}
-	
-	strncpy(scene->name, name, 20);
-	scene->init = (init == NULL) ? SGE_FallbackInit : init;
-	scene->quit = (quit == NULL) ? SGE_FallbackQuit : quit;
-	scene->handleEvents = (handleEvents == NULL) ? SGE_FallbackHandleEvents : handleEvents;
-	scene->update = (update == NULL) ? SGE_FallbackUpdate : update;
-	scene->render = (render == NULL) ? SGE_FallbackRender : render;
-}
-
-/*
- * Sets the current scene function pointers in SGE.c
- * This function is defined in SGE.c
- */
-void SGE_SetCurrentSceneFunctions(const char *name, bool (*init)(), void (*quit)(), void (*handleEvents)(), void (*update)(), void (*render)());
-
-/**
- * \brief Sets the current scene function pointers to a registered scene's functions to set it as the first game scene started by SGE_Run().
+ * \brief Initializes the first scene to start with SGE_Start() from the scene list.
  * 
  * \param name The name of a registered scene.
  */
@@ -248,17 +251,16 @@ void SGE_SetEntrySceneFromList(const char *name)
 	{
 		SGE_LogPrintLine(SGE_LOG_WARNING, "Entry scene \"%s\" not found, creating fallback!", name);
 		SGE_AddScene("Fallback Scene", SGE_FallbackScene_Init, SGE_FallbackScene_Quit, NULL, NULL, NULL);
-		SGE_SetCurrentSceneFunctions("Fallback Scene", SGE_FallbackScene_Init, SGE_FallbackScene_Quit, NULL, NULL, NULL);
-		SGE_GUI_UpdateCurrentScene("Fallback Scene");
+		SGE_SetCurrentScene(SGE_GetSceneFromList("Fallback Scene"));
 		return;
 	}
-	SGE_SetCurrentSceneFunctions(scene->name, scene->init, scene->quit, scene->handleEvents, scene->update, scene->render);
+	SGE_SetCurrentScene(scene);
 }
 
 /**
  * \brief Calls a scene's init function and sets it's loaded flag to true on success.
  * 
- * Calls SGE_Quit() if the scene failed to load.
+ * Calls SGE_Stop() if the scene failed to load.
  * 
  * \param name The name of the scene to initialize.
  */
@@ -274,7 +276,7 @@ void SGE_InitScene(const char *name)
 	SGE_LogPrintLine(SGE_LOG_INFO, "Initializing scene: \"%s\"...", scene->name);
 	if(!scene->init())
 	{
-		SGE_Quit();
+		SGE_Stop();
 		SGE_LogPrintLine(SGE_LOG_ERROR, "Failed initializing scene!");
 	}
 	else
@@ -341,15 +343,14 @@ void SGE_SwitchScenes()
 
 	if(switchQuitCurrent)
 	{
-		SGE_QuitScene(SGE_GetCurrentSceneName());
+		SGE_QuitScene(currentScene.name);
 	}
 	
-	SGE_SetCurrentSceneFunctions(nextSwitchScene->name, nextSwitchScene->init, nextSwitchScene->quit, nextSwitchScene->handleEvents, nextSwitchScene->update, nextSwitchScene->render);
-	SGE_GUI_UpdateCurrentScene(nextSwitchScene->name);
+	SGE_SetCurrentScene(nextSwitchScene);
 
-	if(!SGE_SceneIsLoaded(SGE_GetCurrentSceneName()))
+	if(!SGE_SceneIsLoaded(currentScene.name))
 	{
-		SGE_InitScene(SGE_GetCurrentSceneName());
+		SGE_InitScene(currentScene.name);
 	}
 
 	nextSwitchScene = NULL;
@@ -377,7 +378,7 @@ void SGE_AddScene(const char *name, bool (*init)(), void (*quit)(), void (*handl
 {
 	if(!sceneList)
 	{
-		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): Scene list is not initialized.", __FUNCTION__);
+		SGE_LogPrintLine(SGE_LOG_ERROR, "%s(): Cannot add scene, scene list is not initialized.", __FUNCTION__);
 		return;
 	}
 
@@ -419,7 +420,7 @@ void SGE_LLFreeScene(void *data)
  * \brief Creates the scene list, a list of all registered scenes.
  * 
  */
-void SGE_CreateSceneList()
+static void SGE_CreateSceneList()
 {
 	if(sceneList)
 	{
@@ -434,7 +435,7 @@ void SGE_CreateSceneList()
  *        The scene list is NULL after a call to this function, meaning no scene operations are valid.
  * 
  */
-void SGE_DestroySceneList()
+static void SGE_DestroySceneList()
 {
 	sceneList = SGE_LLDestroy(sceneList);
 }
@@ -460,4 +461,38 @@ void *SGE_LLQuitLoadedScene(SGE_LinkedList *list, SGE_LLNode *currentNode, void 
 void SGE_QuitLoadedScenes()
 {
 	SGE_LLProcess(sceneList, SGE_LLQuitLoadedScene, NULL);
+}
+
+/*
+ * Scene module functions used by SGE.c
+ */
+
+void SGE_Scene_Init()
+{
+	SGE_SetSceneFunctions(&currentScene, "SGE", NULL, NULL, NULL, NULL, NULL);
+	SGE_CreateSceneList();
+}
+
+void SGE_Scene_Quit()
+{
+	SGE_SetSceneFunctions(&currentScene, "SGE", NULL, NULL, NULL, NULL, NULL);
+	SGE_DestroySceneList();
+}
+
+void SGE_Scene_HandleEvents()
+{
+	SGE_GUI_ControlList_HandleEvents(currentScene.controls);
+	currentScene.handleEvents();
+}
+
+void SGE_Scene_Update()
+{
+	SGE_GUI_ControlList_Update(currentScene.controls);
+	currentScene.update();
+}
+
+void SGE_Scene_Render()
+{
+	currentScene.render();
+	SGE_GUI_ControlList_Render(currentScene.controls);
 }

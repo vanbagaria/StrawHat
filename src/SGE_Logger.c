@@ -1,5 +1,5 @@
 #include "SGE_Logger.h"
-#include "SGE.h"
+#include "SGE_Scene.h"
 
 #include <stdio.h>
 #include <stdarg.h>

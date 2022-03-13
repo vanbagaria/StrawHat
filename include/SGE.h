@@ -53,6 +53,7 @@ SGE_InitConfig SGE_CreateInitConfig();
  * \return true if initialization is successful, false if there was an error.
  * 
  * \sa SGE_CreateInitConfig
+ * \sa SGE_Quit
  * \sa SGE_Start
  */
 bool SGE_Init(const char *title, int width, int height, SGE_InitConfig *config);
@@ -60,6 +61,7 @@ bool SGE_Init(const char *title, int width, int height, SGE_InitConfig *config);
 /**
  * \brief Uninitializes SGE and destroys the game window, must be called if SGE has been initialized with SGE_Init().
  * 
+ * \sa SGE_Init
  */
 void SGE_Quit();
 
@@ -73,12 +75,14 @@ void SGE_Quit();
  * 
  * \sa SGE_Init
  * \sa SGE_AddScene
+ * \sa SGE_Stop
  */
 void SGE_Start(const char *entrySceneName);
 
 /**
  * \brief Stops the currently running game scene. Must be called from inside of a game scene after SGE_Start() has been called.
  * 
+ * \sa SGE_Start
  */
 void SGE_Stop();
 
@@ -119,7 +123,7 @@ int SGE_GetFPSLimit();
 void SGE_SetVSync(bool enabled);
 
 /**
- * \brief Returns whether vsync is currently turned on.
+ * \brief Returns whether V-SYNC is currently turned on.
  * 
  * \return true if vsync is on, false if vsync is off.
  */
@@ -204,13 +208,6 @@ bool SGE_KeyIsPressed(SDL_Scancode scancode);
 double SGE_GetDeltaTime();
 
 /**
- * \brief Returns the name of the currently active game scene.
- * 
- * \return The name of the current game scene. 
- */
-const char *SGE_GetCurrentSceneName();
-
-/**
  * \brief Returns the SDL_Event used for event handling by the game window.
  *        It contains information about the current event. 
  * 
@@ -225,7 +222,7 @@ SDL_Event *SGE_GetSDLEvent();
  * \return true if mouse cursor is inside rect,
  *         false otherwise.
  */
-bool SGE_MouseInRect(const SDL_Rect *rect);
+bool SGE_IsMouseInRect(const SDL_Rect *rect);
 
 /**
  * \brief Checks if one rectangle intersects another rectangle.
@@ -234,6 +231,6 @@ bool SGE_MouseInRect(const SDL_Rect *rect);
  * \param r2 Second rectangle.
  * \return true if rectangles intersect, false otherwise.
  */
-bool SGE_RectInRect(const SDL_Rect *r1, const SDL_Rect *r2);
+bool SGE_IsRectInRect(const SDL_Rect *r1, const SDL_Rect *r2);
 
 #endif
